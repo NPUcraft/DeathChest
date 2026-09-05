@@ -187,9 +187,12 @@ public final class DeathChestManager {
             if (secondary != null) {
                 secondary.setType(material, false);
             }
-            applyChestData(primary, placement.getFacing(), placement.getType() == ChestType.DOUBLE ? partnerType(primary, secondary, true) : Chest.Type.SINGLE, water1);
+            applyChestData(primary, placement.getFacing(), placement.getType() == ChestType.DOUBLE
+                    ? partnerType(primary, secondary, placement.getFacing(), true) : Chest.Type.SINGLE, water1);
             if (secondary != null) {
-                applyChestData(secondary, placement.getFacing(), partnerType(primary, secondary, false), water2);
+                applyChestData(secondary, placement.getFacing(),
+                        partnerType(primary, secondary, placement.getFacing(), false), water2);
+                validateDoubleChest(primary, secondary);
             }
             writePdc(primary, data);
             if (secondary != null) {
@@ -653,14 +656,43 @@ public final class DeathChestManager {
         return blocks;
     }
 
-    private Chest.Type partnerType(Block primary, Block secondary, boolean forPrimary) {
+    private Chest.Type partnerType(Block primary, Block secondary, BlockFace facing, boolean forPrimary) {
         if (secondary == null) {
             return Chest.Type.SINGLE;
         }
-        if (secondary.getX() > primary.getX() || secondary.getZ() > primary.getZ()) {
-            return forPrimary ? Chest.Type.RIGHT : Chest.Type.LEFT;
+        Chest.Type primaryType = primaryChestType(facing,
+                secondary.getX() - primary.getX(), secondary.getZ() - primary.getZ());
+        if (forPrimary) {
+            return primaryType;
         }
-        return forPrimary ? Chest.Type.LEFT : Chest.Type.RIGHT;
+        return primaryType == Chest.Type.LEFT ? Chest.Type.RIGHT : Chest.Type.LEFT;
+    }
+
+    static Chest.Type primaryChestType(BlockFace facing, int partnerOffsetX, int partnerOffsetZ) {
+        BlockFace clockwise = switch (facing) {
+            case NORTH -> BlockFace.EAST;
+            case EAST -> BlockFace.SOUTH;
+            case SOUTH -> BlockFace.WEST;
+            case WEST -> BlockFace.NORTH;
+            default -> throw new IllegalArgumentException("Chest facing must be horizontal: " + facing);
+        };
+        if (partnerOffsetX == clockwise.getModX() && partnerOffsetZ == clockwise.getModZ()) {
+            return Chest.Type.LEFT;
+        }
+        if (partnerOffsetX == -clockwise.getModX() && partnerOffsetZ == -clockwise.getModZ()) {
+            return Chest.Type.RIGHT;
+        }
+        throw new IllegalArgumentException("Death chest partner is not perpendicular to facing " + facing
+                + ": dx=" + partnerOffsetX + " dz=" + partnerOffsetZ);
+    }
+
+    private void validateDoubleChest(Block primary, Block secondary) {
+        Inventory primaryInventory = physicalChest(primary).getInventory();
+        Inventory secondaryInventory = physicalChest(secondary).getInventory();
+        if (primaryInventory.getSize() != 54 || secondaryInventory.getSize() != 54) {
+            throw new IllegalStateException("Double death chest did not form a combined 54-slot inventory: primary="
+                    + primaryInventory.getSize() + " secondary=" + secondaryInventory.getSize());
+        }
     }
 
     private void writePdc(Block block, DeathChestData data) {
