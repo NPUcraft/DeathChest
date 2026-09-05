@@ -7,6 +7,7 @@ import com.npucraft.deathchest.model.ChestType;
 import com.npucraft.deathchest.model.DeathChestData;
 import com.npucraft.deathchest.model.ExpireMode;
 import com.npucraft.deathchest.model.LocationKey;
+import com.npucraft.deathchest.util.ItemMatcher;
 import com.npucraft.deathchest.util.ItemStacks;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -23,6 +24,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -182,24 +184,18 @@ public final class DeathChestManager {
         }
         try {
             primary.setType(material, false);
-            applyChestData(primary, placement.getFacing(), placement.getType() == ChestType.DOUBLE ? partnerType(primary, secondary, true) : Chest.Type.SINGLE, water1);
             if (secondary != null) {
                 secondary.setType(material, false);
+            }
+            applyChestData(primary, placement.getFacing(), placement.getType() == ChestType.DOUBLE ? partnerType(primary, secondary, true) : Chest.Type.SINGLE, water1);
+            if (secondary != null) {
                 applyChestData(secondary, placement.getFacing(), partnerType(primary, secondary, false), water2);
             }
             writePdc(primary, data);
             if (secondary != null) {
                 writePdc(secondary, data);
             }
-            Inventory inventory = inventoryOf(primary);
-            if (inventory == null) {
-                throw new IllegalStateException("Death chest inventory missing after placement");
-            }
-            inventory.clear();
-            HashMap<Integer, ItemStack> leftover = inventory.addItem(ItemStacks.deepCopy(items).toArray(ItemStack[]::new));
-            if (!leftover.isEmpty()) {
-                throw new IllegalStateException("Death chest could not store all assigned items");
-            }
+            storeAssignedItems(primary, secondary, placement.getType(), items);
         } catch (RuntimeException exception) {
             revertBlock(primary, primaryBefore);
             if (secondary != null && secondaryBefore != null) {
@@ -283,6 +279,36 @@ public final class DeathChestManager {
             }
         }
         return inventoryOf(primary);
+    }
+
+    public ItemStack[] contentsOf(DeathChestData data) {
+        List<org.bukkit.block.Chest> blocks = ownedChestBlocks(data);
+        if (blocks.isEmpty()) {
+            return null;
+        }
+        int expectedBlocks = data.getChestType() == ChestType.DOUBLE ? 2 : 1;
+        if (blocks.size() != expectedBlocks) {
+            return null;
+        }
+        ItemStack[] contents = new ItemStack[expectedBlocks * 27];
+        for (int blockIndex = 0; blockIndex < blocks.size(); blockIndex++) {
+            ItemStack[] half = blocks.get(blockIndex).getBlockInventory().getContents();
+            System.arraycopy(ItemStacks.cloneArray(half), 0, contents, blockIndex * 27, 27);
+        }
+        return contents;
+    }
+
+    public void setContents(DeathChestData data, ItemStack[] contents) {
+        List<org.bukkit.block.Chest> blocks = ownedChestBlocks(data);
+        int expectedBlocks = data.getChestType() == ChestType.DOUBLE ? 2 : 1;
+        int expectedSlots = expectedBlocks * 27;
+        if (blocks.size() != expectedBlocks || contents == null || contents.length != expectedSlots) {
+            throw new IllegalStateException("Death chest inventory layout is unavailable: " + data.getId());
+        }
+        for (int blockIndex = 0; blockIndex < blocks.size(); blockIndex++) {
+            ItemStack[] half = Arrays.copyOfRange(contents, blockIndex * 27, (blockIndex + 1) * 27);
+            blocks.get(blockIndex).getBlockInventory().setContents(ItemStacks.cloneArray(half));
+        }
     }
 
     public Inventory inventoryOf(Block block) {
@@ -501,8 +527,7 @@ public final class DeathChestManager {
                 return;
             }
             DeathChestData chest = current.get();
-            Inventory inventory = inventoryOf(chest);
-            if (inventory != null && ItemStacks.isInventoryEmpty(inventory)) {
+            if (existsInWorld(chest) && currentItems(chest).isEmpty()) {
                 plugin.audit().chest(chest, "因空箱自动移除", "");
                 removeAndStoreRemaining(chest, false);
             }
@@ -573,6 +598,59 @@ public final class DeathChestManager {
             logged.setWaterlogged(true);
         }
         block.setBlockData(chest, false);
+    }
+
+    private void storeAssignedItems(Block primary, Block secondary, ChestType type, List<ItemStack> items) {
+        int slots = type.slots();
+        Inventory packed = Bukkit.createInventory(null, slots);
+        HashMap<Integer, ItemStack> leftover = packed.addItem(ItemStacks.deepCopy(items).toArray(ItemStack[]::new));
+        if (!leftover.isEmpty()) {
+            throw new IllegalStateException("Assigned items exceed planned death chest capacity: slots=" + slots
+                    + " leftover=" + leftover.size());
+        }
+
+        org.bukkit.block.Chest primaryChest = physicalChest(primary);
+        primaryChest.getBlockInventory().setContents(Arrays.copyOfRange(packed.getContents(), 0, 27));
+        List<ItemStack> stored = new ArrayList<>(ItemStacks.fromArray(primaryChest.getBlockInventory().getContents()));
+        if (type == ChestType.DOUBLE) {
+            org.bukkit.block.Chest secondaryChest = physicalChest(secondary);
+            secondaryChest.getBlockInventory().setContents(Arrays.copyOfRange(packed.getContents(), 27, 54));
+            stored.addAll(ItemStacks.fromArray(secondaryChest.getBlockInventory().getContents()));
+        }
+        if (!ItemMatcher.matches(items, stored)) {
+            throw new IllegalStateException("Death chest item verification failed after physical write");
+        }
+    }
+
+    private org.bukkit.block.Chest physicalChest(Block block) {
+        if (block == null || !(block.getState() instanceof org.bukkit.block.Chest chest)) {
+            throw new IllegalStateException("Death chest block inventory missing after placement");
+        }
+        return chest;
+    }
+
+    private List<org.bukkit.block.Chest> ownedChestBlocks(DeathChestData data) {
+        World world = Bukkit.getWorld(data.getWorld());
+        if (world == null || !chunkLoaded(data)) {
+            return List.of();
+        }
+        List<org.bukkit.block.Chest> blocks = new ArrayList<>(2);
+        Block primary = world.getBlockAt(data.getX(), data.getY(), data.getZ());
+        if (!isOwnedBlock(primary, data) || !(primary.getState() instanceof org.bukkit.block.Chest primaryChest)) {
+            return List.of();
+        }
+        blocks.add(primaryChest);
+        if (data.getChestType() == ChestType.DOUBLE) {
+            if (data.getSecondX() == null || data.getSecondY() == null || data.getSecondZ() == null) {
+                return List.of();
+            }
+            Block secondary = world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ());
+            if (!isOwnedBlock(secondary, data) || !(secondary.getState() instanceof org.bukkit.block.Chest secondaryChest)) {
+                return List.of();
+            }
+            blocks.add(secondaryChest);
+        }
+        return blocks;
     }
 
     private Chest.Type partnerType(Block primary, Block secondary, boolean forPrimary) {

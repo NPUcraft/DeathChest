@@ -8,7 +8,6 @@ import com.npucraft.deathchest.util.EquipmentUtil;
 import com.npucraft.deathchest.util.ItemStacks;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
@@ -46,11 +45,11 @@ public final class QuickRetrieveManager {
         if (!player.isOnline()) {
             return RetrieveResult.missing();
         }
-        Inventory chestInventory = plugin.chests().inventoryOf(chest);
-        if (chestInventory == null) {
+        ItemStack[] originalChest = plugin.chests().contentsOf(chest);
+        if (originalChest == null) {
             return RetrieveResult.missing();
         }
-        ItemStack[] originalChest = ItemStacks.cloneArray(chestInventory.getContents());
+        originalChest = ItemStacks.cloneArray(originalChest);
         ItemStack[] chestContents = ItemStacks.cloneArray(originalChest);
         if (ItemStacks.fromArray(chestContents).isEmpty()) {
             return RetrieveResult.empty();
@@ -95,10 +94,13 @@ public final class QuickRetrieveManager {
 
         plugin.chests().setLocked(chest, true);
         try {
-            chestInventory.setContents(chestContents);
+            plugin.chests().setContents(chest, chestContents);
             if (!player.isOnline()) {
-                plugin.recovery().store(player.getUniqueId(), chest.getRecordId(), takenItems);
-                if (ItemStacks.isInventoryEmpty(chestInventory)) {
+                if (!plugin.recovery().store(player.getUniqueId(), chest.getRecordId(), takenItems)) {
+                    plugin.chests().setContents(chest, originalChest);
+                    throw new IllegalStateException("Player disconnected and retrieved items could not be persisted");
+                }
+                if (ItemStacks.fromArray(chestContents).isEmpty()) {
                     plugin.chests().scheduleEmptyCheck(chest);
                 }
                 return new RetrieveResult(taken, left, false, false);
@@ -107,14 +109,14 @@ public final class QuickRetrieveManager {
             playerInventory.setArmorContents(armor);
             playerInventory.setItemInOffHand(offhand[0]);
         } catch (RuntimeException exception) {
-            chestInventory.setContents(originalChest);
+            plugin.chests().setContents(chest, originalChest);
             throw exception;
         } finally {
             plugin.chests().setLocked(chest, false);
         }
         plugin.audit().log(AuditEventType.QUICK_RETRIEVE, player.getUniqueId(), player.getName(), chest.getOwnerUuid(),
                 chest.getOwnerName(), chest.getId(), chest.getRecordId(), "taken=" + taken + " left=" + left, false);
-        if (ItemStacks.isInventoryEmpty(chestInventory)) {
+        if (ItemStacks.fromArray(chestContents).isEmpty()) {
             plugin.chests().scheduleEmptyCheck(chest);
         }
         return new RetrieveResult(taken, left, false, false);

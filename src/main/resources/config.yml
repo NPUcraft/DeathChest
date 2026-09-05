@@ -88,7 +88,7 @@ chest:
   # DROP_OVERFLOW    装不下的部分留在原版掉落里
   # NORMAL_DROP_ALL  只要装不下，整次死亡都不创建箱子，全部原版掉落
   overflow-mode: EXTRA_CHEST
-  # 方块类型，建议 CHEST。双箱需要原版箱子才能合并库存
+  # 方块类型，仅支持 CHEST 或 TRAPPED_CHEST；其他值会安全回退为 CHEST
   block-type: CHEST
 
 location:

@@ -157,7 +157,7 @@ public final class PluginSettings {
         this.sizingMode = enumValue(config.getString("chest.sizing-mode"), SizingMode.AUTO, SizingMode.class);
         this.overflowMode = enumValue(config.getString("chest.overflow-mode"), OverflowMode.EXTRA_CHEST, OverflowMode.class);
         Material chestType = Material.matchMaterial(config.getString("chest.block-type", "CHEST"));
-        this.chestBlockType = chestType == null ? Material.CHEST : chestType;
+        this.chestBlockType = chestType == Material.TRAPPED_CHEST ? Material.TRAPPED_CHEST : Material.CHEST;
 
         this.safeLocationRadius = Math.max(1, config.getInt("location.safe-location-radius", 32));
         this.verticalSearchRadius = Math.max(1, config.getInt("location.vertical-search-radius", 64));
