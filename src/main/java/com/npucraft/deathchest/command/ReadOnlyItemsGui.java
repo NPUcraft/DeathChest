@@ -19,13 +19,13 @@ public final class ReadOnlyItemsGui implements InventoryHolder {
     private final String recordId;
     private final int page;
     private final int pages;
-    private final String ownerName;
+    private final String ownerIdentifier;
     private final boolean adminControls;
 
     public ReadOnlyItemsGui(DeathRecord record, int page, Component title, MessageManager messages,
                             boolean adminControls) {
         this.recordId = record.getRecordId();
-        this.ownerName = record.getPlayerName();
+        this.ownerIdentifier = record.getPlayerUuid().toString();
         this.adminControls = adminControls;
         List<ItemStack> items = ItemStacks.deepCopy(record.getItems());
         this.pages = Math.max(1, (int) Math.ceil(items.size() / 45.0D));
@@ -92,6 +92,6 @@ public final class ReadOnlyItemsGui implements InventoryHolder {
             case 52 -> " all --force";
             default -> null;
         };
-        return suffix == null ? null : "deathchest restore " + ownerName + " " + recordId + suffix;
+        return suffix == null ? null : "deathchest restore " + ownerIdentifier + " " + recordId + suffix;
     }
 }

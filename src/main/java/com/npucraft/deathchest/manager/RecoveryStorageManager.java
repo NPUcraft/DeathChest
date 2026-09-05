@@ -5,6 +5,7 @@ import com.npucraft.deathchest.model.DeathChestData;
 import com.npucraft.deathchest.model.DeathRecord;
 import com.npucraft.deathchest.model.RecoveryEntry;
 import com.npucraft.deathchest.util.Ids;
+import com.npucraft.deathchest.util.ItemMatcher;
 import com.npucraft.deathchest.util.ItemStacks;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -24,24 +25,26 @@ public final class RecoveryStorageManager {
     }
 
     public boolean store(UUID player, String recordId, List<ItemStack> items) {
-        return storeWithId(Ids.recoveryId(), player, recordId, items, false);
+        return storeWithId(Ids.recoveryId(), player, recordId, items, false, false);
     }
 
     public boolean storeChestTransfer(DeathChestData chest, List<ItemStack> items) {
         if (chest == null) {
             return false;
         }
-        return storeWithId(chestTransferId(chest.getId()), chest.getOwnerUuid(), chest.getRecordId(), items, true);
+        return storeWithId(chestTransferId(chest.getId()), chest.getOwnerUuid(), chest.getRecordId(), items, true, false);
     }
 
     public boolean storeRestore(DeathRecord record, List<ItemStack> items) {
         if (record == null) {
             return false;
         }
-        return storeWithId(restoreTransferId(record.getRecordId()), record.getPlayerUuid(), record.getRecordId(), items, false);
+        return storeWithId(restoreTransferId(record.getRecordId()), record.getPlayerUuid(), record.getRecordId(),
+                items, false, true);
     }
 
-    private boolean storeWithId(String id, UUID player, String recordId, List<ItemStack> items, boolean allowEmpty) {
+    private boolean storeWithId(String id, UUID player, String recordId, List<ItemStack> items,
+                                boolean allowEmpty, boolean neverExpire) {
         if (!plugin.settings().recoveryEnabled || items == null || (!allowEmpty && items.isEmpty())) {
             return false;
         }
@@ -51,6 +54,9 @@ public final class RecoveryStorageManager {
             if (!Objects.equals(player, saved.getPlayerUuid()) || !Objects.equals(recordId, saved.getRecordId())) {
                 throw new IllegalStateException("Recovery transfer ID collision: " + id);
             }
+            if (!ItemMatcher.matches(saved.getItems(), items)) {
+                throw new IllegalStateException("Recovery transfer content mismatch: " + id);
+            }
             return true;
         }
         RecoveryEntry entry = new RecoveryEntry();
@@ -59,7 +65,8 @@ public final class RecoveryStorageManager {
         entry.setRecordId(recordId);
         entry.setItems(ItemStacks.deepCopy(items));
         entry.setCreatedAt(System.currentTimeMillis());
-        entry.setExpireAt(System.currentTimeMillis() + plugin.settings().recoveryExpireDays * 24L * 60L * 60L * 1000L);
+        entry.setExpireAt(neverExpire ? 0L
+                : System.currentTimeMillis() + plugin.settings().recoveryExpireDays * 24L * 60L * 60L * 1000L);
         plugin.storage().saveRecovery(entry);
         plugin.audit().chest("写入恢复仓库", "玩家=" + player
                 + " record=" + (recordId == null ? "-" : recordId)
@@ -78,16 +85,32 @@ public final class RecoveryStorageManager {
                 .isPresent();
     }
 
-    public boolean hasRestoreArtifacts(DeathRecord record) {
-        if (record == null || record.getRecordId() == null) {
-            return false;
+    public boolean hasRestoreTransfer(DeathRecord record) {
+        return record != null && record.getRecordId() != null
+                && plugin.storage().loadRecovery(restoreTransferId(record.getRecordId())).isPresent();
+    }
+
+    public boolean hasPendingForRecord(DeathRecord record) {
+        return record != null && record.getRecordId() != null
+                && plugin.storage().pendingRecoveryRecordIds().contains(record.getRecordId());
+    }
+
+    public void deleteRecordEntries(DeathRecord record) {
+        if (record == null || record.getPlayerUuid() == null || record.getRecordId() == null) {
+            return;
         }
-        if (plugin.storage().loadRecovery(restoreTransferId(record.getRecordId())).isPresent()) {
-            return true;
+        String restoreId = restoreTransferId(record.getRecordId());
+        List<RecoveryEntry> entries = plugin.storage().loadRecovery(record.getPlayerUuid()).stream()
+                .filter(entry -> record.getRecordId().equals(entry.getRecordId()))
+                .toList();
+        for (RecoveryEntry entry : entries) {
+            if (!restoreId.equals(entry.getId())) {
+                plugin.storage().deleteRecovery(entry.getId());
+            }
         }
-        return plugin.storage().loadRecovery(record.getPlayerUuid()).stream()
-                .anyMatch(entry -> record.getRecordId().equals(entry.getRecordId())
-                        && entry.getId().startsWith("CX-"));
+        if (entries.stream().anyMatch(entry -> restoreId.equals(entry.getId()))) {
+            plugin.storage().deleteRecovery(restoreId);
+        }
     }
 
     public static String chestTransferId(String chestId) {
@@ -182,6 +205,9 @@ public final class RecoveryStorageManager {
         long now = System.currentTimeMillis();
         List<RecoveryEntry> active = new ArrayList<>();
         for (RecoveryEntry entry : plugin.storage().loadRecovery(player)) {
+            if (entry.getId() != null && entry.getId().startsWith("RX-")) {
+                continue;
+            }
             if (entry.getExpireAt() > 0L && now >= entry.getExpireAt()) {
                 plugin.storage().deleteRecovery(entry.getId());
                 continue;

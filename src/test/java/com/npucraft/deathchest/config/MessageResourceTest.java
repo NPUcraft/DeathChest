@@ -26,6 +26,8 @@ class MessageResourceTest {
             assertEquals(6, yaml.getStringList("help-admin").size());
             assertTrue(yaml.getString("status-estimated-price", "").contains("%price%"));
             assertTrue(yaml.getString("info-list-entry", "").contains("%id%"));
+            assertTrue(yaml.getString("restore-normal-mismatch", "").contains("--force"));
+            assertTrue(yaml.getString("restore-recovery-required", "").contains("Recovery Storage"));
             assertEquals(4, yaml.getStringList("hologram.protected").size());
             assertEquals(4, yaml.getStringList("hologram.public").size());
         }

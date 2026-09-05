@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 public final class DeathChestCommand implements CommandExecutor {
     private final DeathChestPlugin plugin;
@@ -461,6 +462,12 @@ public final class DeathChestCommand implements CommandExecutor {
     }
 
     private OfflinePlayer findPlayer(String name) {
+        try {
+            UUID uuid = UUID.fromString(name);
+            Player onlineByUuid = Bukkit.getPlayer(uuid);
+            return onlineByUuid == null ? Bukkit.getOfflinePlayer(uuid) : onlineByUuid;
+        } catch (IllegalArgumentException ignored) {
+        }
         Player online = Bukkit.getPlayerExact(name);
         if (online != null) {
             return online;

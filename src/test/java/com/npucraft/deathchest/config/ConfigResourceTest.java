@@ -21,6 +21,8 @@ class ConfigResourceTest {
             assertEquals(200.0D, yaml.getDouble("price.base"));
             assertEquals(2.0D, yaml.getDouble("price.level.price-per-level"));
             assertEquals(20.0D, yaml.getDouble("price.inventory.price-per-slot"));
+            assertEquals(1200.0D, yaml.getDouble("price.maximum"));
+            assertEquals("yyyy-MM-dd HH:mm:ss", yaml.getString("time.date-format"));
             assertEquals(true, yaml.getBoolean("player-settings.default-enabled"));
             assertEquals(true, yaml.getBoolean("player-settings.allow-toggle"));
         }

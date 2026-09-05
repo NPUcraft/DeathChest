@@ -217,7 +217,8 @@ rollback:
   restore-experience: true
 
 recovery-storage:
-  # 找不到位置、敲碎箱子或取回中断时，把物品暂存于此
+  # 找不到位置、敲碎箱子、取回中断或管理员恢复时，把物品安全暂存于此
+  # 管理员恢复的事务快照不会自动过期，也不会自动发放；中断后需管理员检查并使用 --force 处理
   enabled: true
   # 超过这个天数未领取则删除。默认 30 天。按现实时间计算，不受 protection.timer-mode 影响
   expire-days: 30
