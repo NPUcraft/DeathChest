@@ -21,6 +21,7 @@
 - TextDisplay 动态全息和 PlaceholderAPI 可选变量。
 - 潜行右键快速取回、空装备槽自动穿戴、背包不足时保留剩余物品。
 - 完整死亡快照、只读物品 GUI、管理员 SAFE / Force Restore。
+- 可读死亡箱 ID：`DC-玩家名-yyyyMMdd-HHmmss-SSS`；同次死亡的额外箱追加 `-P2`、`-P3`。
 - SQLite 和 MySQL 存储、恢复仓库、审计数据库及控制台行为日志。
 - 致命伤害时自动使用背包内的不死图腾。
 

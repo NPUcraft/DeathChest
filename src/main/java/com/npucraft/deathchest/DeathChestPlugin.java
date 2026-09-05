@@ -173,12 +173,14 @@ public final class DeathChestPlugin extends JavaPlugin {
         }
     }
 
-    public String nextChestId() {
-        String id;
-        do {
-            id = Ids.chestId();
-        } while (storage.loadChest(id).isPresent()
-                || storage.loadRecovery(RecoveryStorageManager.chestTransferId(id)).isPresent());
+    public String nextChestId(String playerId, long deathTime, int part) {
+        String base = Ids.chestId(playerId, deathTime, settings().timezone, part);
+        String id = base;
+        int collision = 2;
+        while (storage.loadChest(id).isPresent()
+                || storage.loadRecovery(RecoveryStorageManager.chestTransferId(id)).isPresent()) {
+            id = base + "-N" + collision++;
+        }
         return id;
     }
 

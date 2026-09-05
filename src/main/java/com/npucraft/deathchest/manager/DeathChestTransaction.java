@@ -190,7 +190,7 @@ public final class DeathChestTransaction {
             for (int i = 0; i < preparedChests.size(); i++) {
                 PreparedChest prepared = preparedChests.get(i);
                 DeathChestData data = new DeathChestData();
-                data.setId(plugin.nextChestId());
+                data.setId(plugin.nextChestId(player.getName(), now, i + 1));
                 data.setRecordId(record.getRecordId());
                 data.setOwnerUuid(player.getUniqueId());
                 data.setOwnerName(player.getName());
