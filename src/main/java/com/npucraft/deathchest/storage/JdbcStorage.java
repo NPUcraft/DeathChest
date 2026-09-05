@@ -109,6 +109,36 @@ public final class JdbcStorage implements PluginStorage {
     }
 
     @Override
+    public Optional<Boolean> loadPlayerEnabled(UUID player) {
+        synchronized (lock) {
+            try (PreparedStatement statement = conn().prepareStatement(
+                    "SELECT enabled FROM player_settings WHERE player_uuid=?")) {
+                statement.setString(1, player.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    return result.next() ? Optional.of(result.getInt(1) != 0) : Optional.empty();
+                }
+            } catch (SQLException exception) {
+                throw failed("Failed to load player setting", exception);
+            }
+        }
+    }
+
+    @Override
+    public void savePlayerEnabled(UUID player, String playerName, boolean enabled) {
+        synchronized (lock) {
+            try (PreparedStatement statement = conn().prepareStatement(dialect.upsertPlayerSetting())) {
+                statement.setString(1, player.toString());
+                statement.setString(2, playerName);
+                statement.setInt(3, enabled ? 1 : 0);
+                statement.setLong(4, System.currentTimeMillis());
+                statement.executeUpdate();
+            } catch (SQLException exception) {
+                throw failed("Failed to save player setting", exception);
+            }
+        }
+    }
+
+    @Override
     public void saveChest(DeathChestData chest) {
         synchronized (lock) {
             try (PreparedStatement statement = conn().prepareStatement(dialect.upsertChest())) {

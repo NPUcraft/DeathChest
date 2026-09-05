@@ -18,6 +18,11 @@ class ConfigResourceTest {
             YamlConfiguration yaml = YamlConfiguration.loadConfiguration(
                     new InputStreamReader(input, StandardCharsets.UTF_8));
             assertEquals(128, yaml.getInt("location.vertical-search-radius"));
+            assertEquals(200.0D, yaml.getDouble("price.base"));
+            assertEquals(2.0D, yaml.getDouble("price.level.price-per-level"));
+            assertEquals(20.0D, yaml.getDouble("price.inventory.price-per-slot"));
+            assertEquals(true, yaml.getBoolean("player-settings.default-enabled"));
+            assertEquals(true, yaml.getBoolean("player-settings.allow-toggle"));
         }
     }
 }

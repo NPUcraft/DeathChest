@@ -29,6 +29,8 @@ public final class DeathChestTabCompleter implements TabCompleter {
         List<String> suggestions = new ArrayList<>();
         if (args.length == 1) {
             suggestions.add("help");
+            addIfPermitted(sender, suggestions, "on", "deathchest.toggle");
+            addIfPermitted(sender, suggestions, "off", "deathchest.toggle");
             addIfPermitted(sender, suggestions, "status", "deathchest.status");
             addIfPermitted(sender, suggestions, "list", "deathchest.list");
             addIfPermitted(sender, suggestions, "info", "deathchest.info");

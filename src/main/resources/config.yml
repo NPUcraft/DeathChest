@@ -19,9 +19,10 @@ totem:
   inventory-trigger: true
 
 player-settings:
-  # 全服开关：是否为玩家创建死亡箱。没有个人开关
-  # false 时仍会记录一次「未创建」的死亡记录，物品按原版掉落
+  # 新玩家首次使用时的默认状态；玩家可通过 /dc on 或 /dc off 修改
   default-enabled: true
+  # 是否允许玩家自行切换死亡箱功能
+  allow-toggle: true
 
 economy:
   # false 或 provider: NONE 时不扣费，死亡箱照常创建
@@ -45,12 +46,12 @@ coinsengine:
 # 最终价格 = 基础价 + 等级价 + 背包价，再按 rounding 取整，并限制在 minimum ~ maximum
 price:
   # 固定基础费用
-  base: 300.0
+  base: 200.0
   level:
     # 是否按玩家当前等级加价
     enabled: true
-    # 每级增加的费用。例如 30 级 × 10 = 300
-    price-per-level: 10.0
+    # 每级增加的费用。例如 30 级 × 2 = 60
+    price-per-level: 2.0
   inventory:
     # 是否按背包占用加价
     enabled: true
@@ -60,7 +61,7 @@ price:
     # DISABLED        不加背包价（与 inventory.enabled: false 相同）
     mode: OCCUPIED_SLOTS
     # 每个格子 / 每个物品的单价
-    price-per-slot: 10.0
+    price-per-slot: 20.0
   # 最低收费。设为 0 表示可以为 0
   minimum: 0
   # 最高收费。默认 3000

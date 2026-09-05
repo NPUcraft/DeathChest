@@ -9,6 +9,7 @@ player-not-found: "<#E57373>✖ 找不到玩家 <white>%player%"
 help-header: "<#55B8FF>━━━━━━━━ <#FFD166>✦ DeathChest <#55B8FF>━━━━━━━━"
 help-player:
   - "<#FFD166>◆ <#55B8FF>/deathchest help <white>查看帮助"
+  - "<#FFD166>◆ <#55B8FF>/deathchest on|off <white>开启或关闭个人死亡箱"
   - "<#FFD166>◆ <#55B8FF>/deathchest status <white>查看个人状态"
   - "<#FFD166>◆ <#55B8FF>/deathchest list <white>查看活动死亡箱"
   - "<#FFD166>◆ <#55B8FF>/deathchest info <id> <white>预览当时掉落"
@@ -26,12 +27,20 @@ help-footer: "<#55B8FF>━━━━━━━━━━━━━━━━━━━
 
 status-header: "<#E6C76A>━━ DeathChest 状态 ━━"
 status-enabled: "<dark_gray>  ├ <gray>功能 <white>%enabled%"
+status-estimated-price: "<dark_gray>  ├ <gray>预计死亡费用 <#E6C76A>%price% %currency%"
 status-active-count: "<dark_gray>  ├ <gray>活动箱子 <white>%count%"
 status-last-id: "<dark_gray>  ├ <gray>最近箱子 <#E6C76A>%id%"
 status-last-location: "<dark_gray>  └ <gray>位置 <white>%world% %x% %y% %z%"
 status-none: "<gray>最近没有死亡箱。"
 enabled-yes: "开启"
 enabled-no: "关闭"
+
+toggle-on: "<#8FD694>✔ 已开启个人死亡箱。"
+toggle-off: "<#EBCB8B>已关闭个人死亡箱；死亡时物品将按原版规则掉落。"
+toggle-already-on: "<gray>个人死亡箱已经处于开启状态。"
+toggle-already-off: "<gray>个人死亡箱已经处于关闭状态。"
+toggle-disabled: "<#EBCB8B>服务器不允许玩家修改死亡箱开关。"
+toggle-failed: "<#E57373>✖ 无法保存个人设置，请稍后重试或联系管理员。"
 
 death-created: "<#8FD694>✔ 死亡物品已安全保存"
 death-created-location: "<dark_gray>  ├ <gray>位置 <white>%world% %x% %y% %z%"

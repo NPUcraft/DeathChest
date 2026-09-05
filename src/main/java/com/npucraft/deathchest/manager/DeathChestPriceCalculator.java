@@ -5,6 +5,7 @@ import com.npucraft.deathchest.config.PluginSettings;
 import com.npucraft.deathchest.model.InventoryPriceMode;
 import com.npucraft.deathchest.model.RoundingMode;
 import com.npucraft.deathchest.util.ItemStacks;
+import com.npucraft.deathchest.util.DeathItemRules;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -43,5 +44,11 @@ public final class DeathChestPriceCalculator {
             case CEIL -> Math.ceil(value);
             default -> BigDecimal.valueOf(value).setScale(0, java.math.RoundingMode.HALF_UP).doubleValue();
         };
+    }
+
+    public double estimate(Player player) {
+        List<ItemStack> currentItems = ItemStacks.fromArray(player.getInventory().getContents());
+        DeathItemRules.removeVanishing(currentItems);
+        return currentItems.isEmpty() ? 0.0D : calculate(player, currentItems);
     }
 }

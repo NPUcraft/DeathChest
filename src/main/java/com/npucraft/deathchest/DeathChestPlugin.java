@@ -21,6 +21,8 @@ import com.npucraft.deathchest.hook.DeathChestPlaceholderExpansion;
 import com.npucraft.deathchest.hook.PlaceholderManager;
 import com.npucraft.deathchest.hook.ProtectionManager;
 import com.npucraft.deathchest.manager.DeathRecordManager;
+import com.npucraft.deathchest.manager.DeathChestPriceCalculator;
+import com.npucraft.deathchest.manager.PlayerSettingsManager;
 import com.npucraft.deathchest.manager.RecoveryStorageManager;
 import com.npucraft.deathchest.manager.QuickRetrieveManager;
 import com.npucraft.deathchest.manager.RollbackManager;
@@ -30,7 +32,9 @@ import com.npucraft.deathchest.util.Ids;
 import com.npucraft.deathchest.util.Keys;
 import com.npucraft.deathchest.util.StartupBanner;
 import org.bukkit.Bukkit;
+import org.bukkit.GameRule;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DeathChestPlugin extends JavaPlugin {
@@ -44,6 +48,8 @@ public final class DeathChestPlugin extends JavaPlugin {
     private AuditLogger audit;
     private DeathChestManager chests;
     private DeathRecordManager records;
+    private PlayerSettingsManager playerSettings;
+    private DeathChestPriceCalculator priceCalculator;
     private RecoveryStorageManager recovery;
     private HologramManager holograms;
     private QuickRetrieveManager retrieve;
@@ -64,6 +70,8 @@ public final class DeathChestPlugin extends JavaPlugin {
         this.storage = StorageFactory.create(this);
         this.storage.open();
         this.audit = new AuditLogger(this);
+        this.playerSettings = new PlayerSettingsManager(this);
+        this.priceCalculator = new DeathChestPriceCalculator(this);
         this.economy = new EconomyManager(this);
         this.protection = new ProtectionManager(this);
         this.chests = new DeathChestManager(this);
@@ -238,6 +246,37 @@ public final class DeathChestPlugin extends JavaPlugin {
 
     public DeathRecordManager records() {
         return records;
+    }
+
+    public PlayerSettingsManager playerSettings() {
+        return playerSettings;
+    }
+
+    public DeathChestPriceCalculator priceCalculator() {
+        return priceCalculator;
+    }
+
+    public double estimatedDeathPrice(Player player) {
+        if (player == null || !settings().enabled || !playerSettings.isEnabled(player.getUniqueId())
+                || !player.hasPermission("deathchest.use")
+                || !economy.chargingEnabled()
+                || Boolean.TRUE.equals(player.getWorld().getGameRuleValue(GameRule.KEEP_INVENTORY))) {
+            return 0.0D;
+        }
+        double calculated = priceCalculator.estimate(player);
+        if (calculated <= 0.0D) {
+            return 0.0D;
+        }
+        var balance = economy.lookupBalance(player);
+        if (balance.isEmpty()) {
+            return 0.0D;
+        }
+        double available = Math.max(0.0D, balance.getAsDouble());
+        if (available + 0.000001D >= calculated) {
+            return calculated;
+        }
+        return settings().insufficientBalanceMode == com.npucraft.deathchest.model.InsufficientBalanceMode.TAKE_ALL
+                ? available : 0.0D;
     }
 
     public RecoveryStorageManager recovery() {

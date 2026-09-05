@@ -41,6 +41,8 @@ public final class DeathChestCommand implements CommandExecutor {
         String sub = args[0].toLowerCase(Locale.ROOT);
         plugin.audit().player(sender.getName(), "执行命令", "/" + label + " " + String.join(" ", args));
         return switch (sub) {
+            case "on" -> toggle(sender, true);
+            case "off" -> toggle(sender, false);
             case "status" -> status(sender);
             case "list" -> list(sender, args);
             case "info" -> info(sender, args);
@@ -65,10 +67,14 @@ public final class DeathChestCommand implements CommandExecutor {
         if (!has(player, "deathchest.status")) {
             return true;
         }
-        boolean enabled = plugin.settings().enabled && plugin.settings().defaultEnabled;
+        boolean enabled = plugin.settings().enabled && plugin.playerSettings().isEnabled(player.getUniqueId());
         List<DeathChestData> chests = plugin.chests().byOwner(player.getUniqueId());
         plugin.messages().send(player, "status-header");
         plugin.messages().send(player, "status-enabled", Map.of("enabled", enabled ? plugin.messages().raw("enabled-yes", "on") : plugin.messages().raw("enabled-no", "off")));
+        plugin.messages().send(player, "status-estimated-price", Map.of(
+                "price", Texts.formatNumber(plugin.estimatedDeathPrice(player)),
+                "currency", plugin.economy().provider().getCurrencyName()
+        ));
         plugin.messages().send(player, "status-active-count", Map.of("count", String.valueOf(chests.size())));
         if (chests.isEmpty()) {
             plugin.messages().send(player, "status-none");
@@ -81,6 +87,29 @@ public final class DeathChestCommand implements CommandExecutor {
                     "y", String.valueOf(last.getY()),
                     "z", String.valueOf(last.getZ())
             ));
+        }
+        return true;
+    }
+
+    private boolean toggle(CommandSender sender, boolean enabled) {
+        Player player = asPlayer(sender);
+        if (player == null || !has(player, "deathchest.toggle")) {
+            return true;
+        }
+        if (!plugin.settings().allowToggle) {
+            plugin.messages().send(player, "toggle-disabled");
+            return true;
+        }
+        if (plugin.playerSettings().isEnabled(player.getUniqueId()) == enabled) {
+            plugin.messages().send(player, enabled ? "toggle-already-on" : "toggle-already-off");
+            return true;
+        }
+        try {
+            plugin.playerSettings().setEnabled(player, enabled);
+            plugin.messages().send(player, enabled ? "toggle-on" : "toggle-off");
+        } catch (Exception exception) {
+            plugin.getLogger().warning("Failed to save DeathChest setting for " + player.getName() + ": " + exception.getMessage());
+            plugin.messages().send(player, "toggle-failed");
         }
         return true;
     }

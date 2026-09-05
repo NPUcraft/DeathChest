@@ -23,6 +23,7 @@ public final class PluginSettings {
     public final boolean debug;
 
     public final boolean defaultEnabled;
+    public final boolean allowToggle;
 
     public final boolean inventoryTotem;
 
@@ -134,18 +135,19 @@ public final class PluginSettings {
         this.inventoryTotem = config.getBoolean("totem.inventory-trigger", true);
 
         this.defaultEnabled = config.getBoolean("player-settings.default-enabled", true);
+        this.allowToggle = config.getBoolean("player-settings.allow-toggle", true);
 
         this.economyEnabled = config.getBoolean("economy.enabled", true);
         this.economyProvider = enumValue(config.getString("economy.provider"), EconomyProviderType.VAULT, EconomyProviderType.class);
         this.insufficientBalanceMode = enumValue(config.getString("economy.insufficient-balance-mode"), InsufficientBalanceMode.NORMAL_DROP, InsufficientBalanceMode.class);
         this.coinsEngineCurrency = config.getString("coinsengine.currency", "coins");
 
-        this.basePrice = config.getDouble("price.base", 300.0D);
+        this.basePrice = config.getDouble("price.base", 200.0D);
         this.levelPriceEnabled = config.getBoolean("price.level.enabled", true);
-        this.pricePerLevel = config.getDouble("price.level.price-per-level", 10.0D);
+        this.pricePerLevel = config.getDouble("price.level.price-per-level", 2.0D);
         this.inventoryPriceEnabled = config.getBoolean("price.inventory.enabled", true);
         this.inventoryPriceMode = enumValue(config.getString("price.inventory.mode"), InventoryPriceMode.OCCUPIED_SLOTS, InventoryPriceMode.class);
-        this.pricePerSlot = config.getDouble("price.inventory.price-per-slot", 10.0D);
+        this.pricePerSlot = config.getDouble("price.inventory.price-per-slot", 20.0D);
         this.minPrice = config.getDouble("price.minimum", 0.0D);
         this.maxPrice = config.getDouble("price.maximum", 3000.0D);
         this.rounding = enumValue(config.getString("price.rounding"), RoundingMode.ROUND, RoundingMode.class);

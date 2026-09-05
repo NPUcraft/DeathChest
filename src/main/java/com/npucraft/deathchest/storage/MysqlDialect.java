@@ -40,7 +40,14 @@ public final class MysqlDialect extends SqlDialect {
 
     @Override
     public void migrate(Connection connection) throws SQLException {
-        execute(connection, "DROP TABLE IF EXISTS player_settings");
+        execute(connection, """
+                CREATE TABLE IF NOT EXISTS player_settings (
+                    player_uuid VARCHAR(36) NOT NULL PRIMARY KEY,
+                    player_name VARCHAR(64) NOT NULL,
+                    enabled TINYINT NOT NULL,
+                    updated_at BIGINT NOT NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
         execute(connection, """
                 CREATE TABLE IF NOT EXISTS death_chests (
                     id VARCHAR(96) NOT NULL PRIMARY KEY,
@@ -158,6 +165,18 @@ public final class MysqlDialect extends SqlDialect {
         execute(connection, "ALTER TABLE audit_log MODIFY COLUMN record_id VARCHAR(96)");
         dropColumnIfPresent(connection, "death_records", "next_death_public");
         dropColumnIfPresent(connection, "death_records", "pinned");
+    }
+
+    @Override
+    public String upsertPlayerSetting() {
+        return """
+                INSERT INTO player_settings(player_uuid, player_name, enabled, updated_at)
+                VALUES(?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    player_name=VALUES(player_name),
+                    enabled=VALUES(enabled),
+                    updated_at=VALUES(updated_at)
+                """;
     }
 
     @Override

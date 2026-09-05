@@ -8,6 +8,7 @@ public enum AuditEventType {
     CHEST_REMOVED,
     CHEST_EXPIRED,
     QUICK_RETRIEVE,
+    PLAYER_TOGGLE,
     ECONOMY_WITHDRAW,
     ADMIN_UNLOCK,
     ADMIN_RESTORE,

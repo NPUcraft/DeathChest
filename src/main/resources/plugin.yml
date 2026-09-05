@@ -23,6 +23,9 @@ permissions:
   deathchest.status:
     description: View personal DeathChest status
     default: true
+  deathchest.toggle:
+    description: Enable or disable personal death chests
+    default: true
   deathchest.list:
     description: List own active death chests
     default: true

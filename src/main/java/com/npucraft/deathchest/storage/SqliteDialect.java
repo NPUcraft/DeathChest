@@ -44,7 +44,14 @@ public final class SqliteDialect extends SqlDialect {
 
     @Override
     public void migrate(Connection connection) throws SQLException {
-        execute(connection, "DROP TABLE IF EXISTS player_settings");
+        execute(connection, """
+                CREATE TABLE IF NOT EXISTS player_settings (
+                    player_uuid TEXT PRIMARY KEY,
+                    player_name TEXT NOT NULL,
+                    enabled INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                )
+                """);
         execute(connection, """
                 CREATE TABLE IF NOT EXISTS death_chests (
                     id TEXT PRIMARY KEY,
@@ -154,6 +161,18 @@ public final class SqliteDialect extends SqlDialect {
         addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN experience_restored INTEGER NOT NULL DEFAULT 0");
         dropColumnIfPresent(connection, "death_records", "next_death_public");
         dropColumnIfPresent(connection, "death_records", "pinned");
+    }
+
+    @Override
+    public String upsertPlayerSetting() {
+        return """
+                INSERT INTO player_settings(player_uuid, player_name, enabled, updated_at)
+                VALUES(?, ?, ?, ?)
+                ON CONFLICT(player_uuid) DO UPDATE SET
+                    player_name=excluded.player_name,
+                    enabled=excluded.enabled,
+                    updated_at=excluded.updated_at
+                """;
     }
 
     @Override

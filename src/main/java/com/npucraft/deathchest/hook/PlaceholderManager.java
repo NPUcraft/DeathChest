@@ -33,6 +33,15 @@ public final class PlaceholderManager {
             return "";
         }
         Map<String, String> values = builtIn(player, chest, record);
+        if (player != null && (input.contains("%deathchest_estimated_price%")
+                || input.contains("%deathchest_estimated_cost%"))) {
+            String estimated = Texts.formatNumber(plugin.estimatedDeathPrice(player));
+            values.put("deathchest_estimated_price", estimated);
+            values.put("deathchest_estimated_cost", estimated);
+        }
+        if (player != null && input.contains("%deathchest_estimated_currency%")) {
+            values.put("deathchest_estimated_currency", plugin.economy().provider().getCurrencyName());
+        }
         if (extra != null) {
             values.putAll(extra);
         }
@@ -62,7 +71,9 @@ public final class PlaceholderManager {
         List<DeathChestData> chests = plugin.chests().byOwner(player.getUniqueId());
         DeathChestData last = chests.isEmpty() ? null : chests.getFirst();
         return switch (params.toLowerCase()) {
-            case "enabled" -> (plugin.settings().enabled && plugin.settings().defaultEnabled) ? "true" : "false";
+            case "enabled" -> (plugin.settings().enabled && plugin.playerSettings().isEnabled(player.getUniqueId())) ? "true" : "false";
+            case "estimated_price", "estimated_cost" -> Texts.formatNumber(plugin.estimatedDeathPrice(player));
+            case "estimated_currency" -> plugin.economy().provider().getCurrencyName();
             case "count" -> String.valueOf(chests.size());
             case "last_id" -> last == null ? "" : last.getId();
             case "last_x" -> last == null ? "" : String.valueOf(last.getX());
@@ -127,6 +138,8 @@ public final class PlaceholderManager {
         if (player != null) {
             values.put("player_name", player.getName());
             values.put("deathchest_player_level", String.valueOf(player.getLevel()));
+            values.put("deathchest_enabled", String.valueOf(
+                    settings.enabled && plugin.playerSettings().isEnabled(player.getUniqueId())));
         }
         return values;
     }

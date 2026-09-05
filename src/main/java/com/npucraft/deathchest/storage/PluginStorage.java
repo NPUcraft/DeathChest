@@ -14,6 +14,10 @@ public interface PluginStorage {
 
     void close();
 
+    Optional<Boolean> loadPlayerEnabled(UUID player);
+
+    void savePlayerEnabled(UUID player, String playerName, boolean enabled);
+
     void saveChest(DeathChestData chest);
 
     void deleteChest(String chestId);

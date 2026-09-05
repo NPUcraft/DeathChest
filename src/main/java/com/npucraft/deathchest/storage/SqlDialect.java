@@ -19,6 +19,8 @@ public abstract class SqlDialect {
 
     public abstract void migrate(Connection connection) throws SQLException;
 
+    public abstract String upsertPlayerSetting();
+
     public abstract String upsertChest();
 
     public abstract String upsertRecord();

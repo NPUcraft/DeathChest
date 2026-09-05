@@ -82,6 +82,7 @@ public final class AuditLogger {
             case CHEST_REMOVED -> "死亡箱 " + chest + " 已移除 主人=" + owner + extra;
             case CHEST_EXPIRED -> "死亡箱 " + chest + " 已过期 主人=" + owner + extra;
             case QUICK_RETRIEVE -> "玩家 " + actor + " 快速取回死亡箱 " + chest + " 主人=" + owner + extra;
+            case PLAYER_TOGGLE -> "玩家 " + actor + " 修改死亡箱开关" + extra;
             case ECONOMY_WITHDRAW -> "玩家 " + owner + " 死亡箱扣费 chest=" + chest + " record=" + record + extra;
             case ADMIN_RESTORE -> "管理员 " + actor + " 回滚 record=" + record + " 目标=" + owner + extra;
             case ADMIN_FORCE_RESTORE -> "管理员 " + actor + " 强制回滚 record=" + record + " 目标=" + owner + extra;

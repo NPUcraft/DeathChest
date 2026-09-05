@@ -35,7 +35,7 @@ public final class DeathChestTransaction {
 
     public DeathChestTransaction(DeathChestPlugin plugin) {
         this.plugin = plugin;
-        this.priceCalculator = new DeathChestPriceCalculator(plugin);
+        this.priceCalculator = plugin.priceCalculator();
         this.sizer = new ChestSizer();
         this.locationFinder = new DeathChestLocationFinder(plugin);
     }
@@ -49,9 +49,11 @@ public final class DeathChestTransaction {
             return;
         }
 
-        if (!settings.defaultEnabled) {
-            failSafe(plugin.records().createPrepared(player, event, ItemStacks.deepCopy(event.getDrops())),
-                    RecordStatus.NORMAL_DROP, "PLAYER_DISABLED");
+        boolean playerEnabled = plugin.playerSettings().isEnabled(player.getUniqueId());
+        if (!playerEnabled) {
+            DeathRecord disabledRecord = plugin.records().createPrepared(player, event, ItemStacks.deepCopy(event.getDrops()));
+            disabledRecord.setDeathChestEnabled(false);
+            failSafe(disabledRecord, RecordStatus.NORMAL_DROP, "PLAYER_DISABLED");
             plugin.messages().send(player, "death-disabled");
             return;
         }
@@ -69,7 +71,7 @@ public final class DeathChestTransaction {
         plugin.audit().log(AuditEventType.DEATH_PREPARED, player.getUniqueId(), player.getName(), player.getUniqueId(),
                 player.getName(), null, record.getRecordId(), "drops=" + snapshot.size(), false);
 
-        record.setDeathChestEnabled(settings.defaultEnabled);
+        record.setDeathChestEnabled(playerEnabled);
         record.setEconomyProvider(plugin.economy().provider().id());
         record.setCurrencyId(plugin.economy().provider().getCurrencyId());
 

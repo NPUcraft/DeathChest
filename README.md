@@ -21,6 +21,7 @@
 - TextDisplay 动态全息和 PlaceholderAPI 可选变量。
 - 潜行右键快速取回、空装备槽自动穿戴、背包不足时保留剩余物品。
 - 完整死亡快照、只读物品 GUI、管理员 SAFE / Force Restore。
+- 玩家可用 `/dc on`、`/dc off` 持久化控制个人死亡箱，默认开启。
 - 可读实体箱 ID：`DC-玩家名-yyyyMMdd-HHmmss-SSS`；同次死亡的额外箱追加 `-P2`、`-P3`。
 - 可读死亡记录 ID：`DR-玩家名-yyyyMMdd-HHmmss-SSS`；同一毫秒发生冲突时追加 `-N2`。旧数据库中已经存在的随机 ID 保持原值。
 - SQLite 和 MySQL 存储、恢复仓库、审计数据库及控制台行为日志。
@@ -77,9 +78,9 @@ mvn -DskipTests clean package
 
 | 功能 | 默认值 |
 | --- | --- |
-| 基础价格 | 300 |
-| 等级价格 | 每级 10 |
-| 背包价格 | 每个实际掉落物品栈 10 |
+| 基础价格 | 200 |
+| 等级价格 | 每级 2 |
+| 背包价格 | 每个实际掉落物品栈 20 |
 | 最高价格 | 3000 |
 | 经验保留 | 70% |
 | 箱子尺寸 | AUTO：优先单箱，不够则双箱 |
@@ -96,12 +97,12 @@ mvn -DskipTests clean package
 | 审计日志保留 | 365 天 |
 | 时区 | Asia/Shanghai（北京时间） |
 
-价格示例：基础价 300，玩家 30 级，本次实际掉落占用 20 个物品栈，则价格为 `300 + 30×10 + 20×10 = 800`。
+价格示例：基础价 200，玩家 30 级，本次实际掉落占用 20 个物品栈，则价格为 `200 + 30×2 + 20×20 = 660`。
 
 ## 死亡处理流程
 
 1. `general.enabled=false` 或玩家没有 `deathchest.use` 时，死亡箱流程不介入本次死亡；独立的背包图腾功能仍可生效。
-2. `player-settings.default-enabled=false` 时不创建死亡箱，但会记录一次未创建记录。
+2. 玩家执行 `/dc off` 后不创建死亡箱，但会记录一次未创建记录；没有个人设置时使用 `player-settings.default-enabled`。
 3. `KeepInventory=true` 时始终不生成死亡箱，也不会复制玩家背包。
 4. 插件只读取事件最终的 `getDrops()`，兼容此前已修改掉落列表的其他插件。
 5. 应用诅咒规则：消失诅咒物品不保存；绑定诅咒物品允许从玩家身上掉落并进入后续流程。
@@ -209,6 +210,7 @@ Residence 检查可分别启用 `build`、`place`、`container`。双箱两个�
 | 命令 | 权限 | 说明 |
 | --- | --- | --- |
 | `/deathchest help` | 无专用权限 | 查看帮助 |
+| `/deathchest on`、`/deathchest off` | `deathchest.toggle` | 开启或关闭个人死亡箱 |
 | `/deathchest status` | `deathchest.status` | 查看功能状态、活动箱数量和最近位置 |
 | `/deathchest list` | `deathchest.list` | 查看自己的活动死亡箱 |
 | `/deathchest info <id>` | `deathchest.info` | 查看自己的箱子信息并打开只读掉落快照 GUI |
@@ -216,7 +218,7 @@ Residence 检查可分别启用 `build`、`place`、`container`。双箱两个�
 
 普通玩家不能通过 `/info` 查看他人的快照，除非额外拥有 `deathchest.list.others`。箱子过期并从活动记录移除后，不能再通过 `/info` 打开。
 
-项目没有 `/toggle`、`/public`、`/retrieve`、`/recover`、`/remove`、`/record` 命令。是否为玩家创建死亡箱由全服配置 `player-settings.default-enabled` 控制，没有个人开关。
+项目没有 `/public`、`/retrieve`、`/recover`、`/remove`、`/record` 命令。玩家首次状态由 `player-settings.default-enabled` 决定；允许切换时，`/dc on|off` 的选择会持久化到 SQLite/MySQL。
 
 ## 管理员命令
 
@@ -265,6 +267,7 @@ Force Restore 用于管理员明确接受箱内状态已经变化的情况，但
 | --- | --- | --- |
 | `deathchest.use` | true | 允许插件处理该玩家死亡 |
 | `deathchest.status` | true | 查看个人状态 |
+| `deathchest.toggle` | true | 开启或关闭个人死亡箱 |
 | `deathchest.list` | true | 查看自己的活动箱 |
 | `deathchest.info` | true | 查看自己的箱子和只读快照 |
 | `deathchest.unlock` | true | 公开自己的箱子 |
@@ -289,6 +292,8 @@ Force Restore 用于管理员明确接受箱内状态已经变化的情况，但
 Expansion identifier 为 `deathchest`，仅为在线玩家返回数据：
 
 - `%deathchest_enabled%`
+- `%deathchest_estimated_price%`（别名 `%deathchest_estimated_cost%`）
+- `%deathchest_estimated_currency%`
 - `%deathchest_count%`
 - `%deathchest_last_id%`
 - `%deathchest_last_world%`
@@ -302,12 +307,15 @@ Expansion identifier 为 `deathchest`，仅为在线玩家返回数据：
 - `%deathchest_id%`、`%deathchest_owner%`、`%deathchest_owner_uuid%`
 - `%deathchest_world%`、`%deathchest_x%`、`%deathchest_y%`、`%deathchest_z%`
 - `%deathchest_price%`、`%deathchest_currency%`
+- `%deathchest_estimated_price%`（别名 `%deathchest_estimated_cost%`）、`%deathchest_estimated_currency%`
 - `%deathchest_created_time%`、`%deathchest_unlock_time%`、`%deathchest_expire_time%`
 - `%deathchest_protection_remaining%`、`%deathchest_expire_remaining%`
 - `%deathchest_state%`、`%deathchest_item_count%`、`%deathchest_slot_count%`
 - `%deathchest_player_level%`、`%player_name%`
 
 插件先替换内部变量，再交给 PlaceholderAPI 解析其他插件变量。倒计时会按实际长度显示“天、小时、分钟、秒”，例如 `2天3小时4分钟5秒`；全息和信息消息同时标注绝对的公开或掉落时间，默认格式为 `yyyy年MM月dd日 HH时mm分ss秒`，时区为 `Asia/Shanghai`。目标时间为 0、已经到期或当前不受保护时，剩余时间显示 `-`。
+
+预计费用按玩家当前等级、当前背包中排除消失诅咒后的物品和当前余额计算，并遵循 KeepInventory、个人开关和余额不足策略。功能关闭、没有可掉落物、无需收费、经济查询失败，以及 `NORMAL_DROP` / `PUBLIC_CHEST` 余额不足时返回 `0`；`TAKE_ALL` 余额不足时返回当前可扣余额。其他插件在实际死亡事件中临时修改掉落物时，最终扣费仍以死亡事件中的实际掉落为准。
 
 ## 存储
 
