@@ -78,6 +78,14 @@ public final class DeathChestPlugin extends JavaPlugin {
         this.command = new DeathChestCommand(this);
 
         this.chests.load();
+        int reconciledTransfers = this.chests.reconcilePendingTransfers();
+        if (reconciledTransfers > 0) {
+            getLogger().warning("Reconciled " + reconciledTransfers + " interrupted death-chest transfers.");
+        }
+        int reconciledRestores = this.rollback.reconcileInterruptedRestores();
+        if (reconciledRestores > 0) {
+            getLogger().warning("Reconciled " + reconciledRestores + " interrupted admin restores.");
+        }
         this.timerClock.applyOfflinePause();
         try {
             this.cleanup.runOnce();
@@ -141,6 +149,15 @@ public final class DeathChestPlugin extends JavaPlugin {
     }
 
     private void hookPlaceholderApi() {
+        if (expansion != null) {
+            try {
+                expansion.unregister();
+            } catch (Exception exception) {
+                getLogger().warning("Failed to unregister PlaceholderAPI expansion: " + exception.getMessage());
+            } finally {
+                expansion = null;
+            }
+        }
         if (!settings().placeholderEnabled) {
             return;
         }
@@ -148,9 +165,6 @@ public final class DeathChestPlugin extends JavaPlugin {
             return;
         }
         try {
-            if (expansion != null) {
-                expansion.unregister();
-            }
             expansion = new DeathChestPlaceholderExpansion(this);
             expansion.register();
             getLogger().info("Registered PlaceholderAPI expansion: deathchest");
@@ -163,7 +177,8 @@ public final class DeathChestPlugin extends JavaPlugin {
         String id;
         do {
             id = Ids.chestId();
-        } while (chests.byId(id).isPresent());
+        } while (storage.loadChest(id).isPresent()
+                || storage.loadRecovery(RecoveryStorageManager.chestTransferId(id)).isPresent());
         return id;
     }
 

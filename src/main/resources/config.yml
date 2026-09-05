@@ -130,7 +130,7 @@ protection:
   # 停机时间写在 plugins/DeathChest/uptime.yml，不要手动删
   # 崩溃半路补时时，箱子会记下已补时长，下次开机只补差额，不会把到期时间加两次
   timer-mode: REALTIME
-  # 主人是否可以敲碎自己的死亡箱（物品会进恢复仓库；恢复仓库关闭时改为掉在地上）
+  # 主人是否可以敲碎自己的死亡箱。非空箱的剩余物品会先安全写入恢复仓库；写入失败时取消破坏
   owner-can-break: true
   # 公开后其他人是否可以敲碎（保护期内外人始终不能敲）
   # 敲碎后剩余物品仍进入箱子主人的恢复仓库，而不是敲碎者的背包，避免公开期偷东西
@@ -214,7 +214,8 @@ rollback:
   restore-items: true
   # 是否允许回滚经验（恢复到死亡前的总经验）
   restore-experience: true
-  # 玩家在线但背包满、或不在线时，把发不下的物品写入恢复仓库
+  # 管理员恢复物品是否使用恢复仓库作为断电安全的中转层
+  # false 时禁止管理员恢复物品；仅恢复经验不受影响
   use-recovery-storage: true
 
 recovery-storage:
@@ -246,7 +247,9 @@ storage:
     username: root
     password: ""
     # 附加 JDBC 参数。一般不用改
-    parameters: "createDatabaseIfNotExist=true&sslMode=DISABLE&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci"
+    # 默认验证 MySQL 服务端证书和主机名，并禁止不安全的 RSA 公钥自动获取。
+    # 如果只连接本机且没有配置 TLS，必须由服主明确改为 sslMode=DISABLE；远程数据库不建议关闭 TLS。
+    parameters: "createDatabaseIfNotExist=true&sslMode=VERIFY_IDENTITY&allowPublicKeyRetrieval=false&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci"
     # 若填写完整 jdbc:mysql://... 则忽略上面的 host/port/database/parameters
     jdbc-url: ""
 

@@ -22,7 +22,7 @@ public final class MysqlDialect extends SqlDialect {
         if (url == null || url.isBlank()) {
             String parameters = settings.mysqlParameters;
             if (parameters == null || parameters.isBlank()) {
-                parameters = "createDatabaseIfNotExist=true&sslMode=DISABLE&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci";
+                parameters = "createDatabaseIfNotExist=true&sslMode=VERIFY_IDENTITY&allowPublicKeyRetrieval=false&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci";
             }
             url = "jdbc:mysql://" + settings.mysqlHost + ":" + settings.mysqlPort + "/" + settings.mysqlDatabase + "?" + parameters;
         }
@@ -109,6 +109,8 @@ public final class MysqlDialect extends SqlDialect {
                     status VARCHAR(32) NOT NULL,
                     failure_reason TEXT,
                     rollback_in_progress TINYINT NOT NULL,
+                    items_restored TINYINT NOT NULL DEFAULT 0,
+                    experience_restored TINYINT NOT NULL DEFAULT 0,
                     items LONGBLOB
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
@@ -144,6 +146,8 @@ public final class MysqlDialect extends SqlDialect {
         createIndexIfAbsent(connection, "CREATE INDEX IF NOT EXISTS idx_recovery_player ON recovery_storage(player_uuid)");
         createIndexIfAbsent(connection, "CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_log(timestamp)");
         addColumnIfAbsent(connection, "ALTER TABLE death_chests ADD COLUMN timer_paused_millis BIGINT NOT NULL DEFAULT 0");
+        addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN items_restored TINYINT NOT NULL DEFAULT 0");
+        addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN experience_restored TINYINT NOT NULL DEFAULT 0");
         dropColumnIfPresent(connection, "death_records", "next_death_public");
         dropColumnIfPresent(connection, "death_records", "pinned");
     }
@@ -201,6 +205,8 @@ public final class MysqlDialect extends SqlDialect {
                     status=VALUES(status),
                     failure_reason=VALUES(failure_reason),
                     rollback_in_progress=VALUES(rollback_in_progress),
+                    items_restored=VALUES(items_restored),
+                    experience_restored=VALUES(experience_restored),
                     items=VALUES(items)
                 """;
     }
@@ -229,7 +235,9 @@ public final class MysqlDialect extends SqlDialect {
                     expire_at=VALUES(expire_at),
                     status=VALUES(status),
                     failure_reason=VALUES(failure_reason),
-                    rollback_in_progress=VALUES(rollback_in_progress)
+                    rollback_in_progress=VALUES(rollback_in_progress),
+                    items_restored=VALUES(items_restored),
+                    experience_restored=VALUES(experience_restored)
                 """;
     }
 

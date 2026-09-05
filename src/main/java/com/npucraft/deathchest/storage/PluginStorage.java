@@ -36,6 +36,8 @@ public interface PluginStorage {
 
     List<DeathRecord> loadRecords(UUID player, int limit);
 
+    List<DeathRecord> loadInterruptedRecords();
+
     int countRecords();
 
     int countRecords(UUID player);
@@ -49,6 +51,8 @@ public interface PluginStorage {
     void saveRecovery(RecoveryEntry entry);
 
     List<RecoveryEntry> loadRecovery(UUID player);
+
+    Optional<RecoveryEntry> loadRecovery(String id);
 
     void deleteRecovery(String id);
 

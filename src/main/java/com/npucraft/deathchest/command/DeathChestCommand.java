@@ -336,7 +336,9 @@ public final class DeathChestCommand implements CommandExecutor {
             plugin.messages().send(sender, "no-permission");
             return true;
         }
-        if (part == RestorePart.EXP && !sender.hasPermission("deathchest.restore.exp") && !sender.hasPermission("deathchest.admin") && !sender.hasPermission("deathchest.restore")) {
+        if ((part == RestorePart.EXP || part == RestorePart.ALL)
+                && !sender.hasPermission("deathchest.restore.exp")
+                && !sender.hasPermission("deathchest.admin")) {
             plugin.messages().send(sender, "no-permission");
             return true;
         }

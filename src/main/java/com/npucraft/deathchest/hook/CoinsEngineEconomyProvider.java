@@ -124,33 +124,42 @@ public final class CoinsEngineEconomyProvider implements EconomyProvider {
     @Override
     public double getBalance(OfflinePlayer player) {
         if (!available()) {
-            return 0.0D;
+            throw new IllegalStateException("CoinsEngine economy is unavailable");
         }
         try {
             if (backend == Backend.COINS_ENGINE) {
                 Class<?> apiClass = (Class<?>) api;
                 Class<?> currencyClass = Class.forName("su.nightexpress.coinsengine.api.currency.Currency");
-                Method method = findBalanceMethod(apiClass, currencyClass);
+                Method method = findBalanceMethod(apiClass, currencyClass, player);
                 if (method == null) {
-                    return 0.0D;
+                    throw new NoSuchMethodException("No supported CoinsEngine getBalance method");
                 }
                 Object value = invokeBalance(method, player);
-                return value instanceof Number number ? number.doubleValue() : 0.0D;
+                if (value instanceof Number number) {
+                    return number.doubleValue();
+                }
+                throw new IllegalStateException("CoinsEngine getBalance returned a non-numeric value");
             }
             Method method = findMethod(api.getClass(), "getBalance", Player.class, String.class);
             if (method != null && player.isOnline()) {
                 Object value = method.invoke(api, player.getPlayer(), currencyId);
-                return value instanceof Number number ? number.doubleValue() : 0.0D;
+                if (value instanceof Number number) {
+                    return number.doubleValue();
+                }
+                throw new IllegalStateException("ExcellentEconomy getBalance returned a non-numeric value");
             }
             Method uuidMethod = findMethod(api.getClass(), "getBalance", UUID.class, String.class);
             if (uuidMethod != null) {
                 Object value = uuidMethod.invoke(api, player.getUniqueId(), currencyId);
-                return value instanceof Number number ? number.doubleValue() : 0.0D;
+                if (value instanceof Number number) {
+                    return number.doubleValue();
+                }
+                throw new IllegalStateException("ExcellentEconomy getBalance returned a non-numeric value");
             }
         } catch (Exception exception) {
-            plugin.debug("CoinsEngine getBalance failed: " + exception.getMessage());
+            throw new IllegalStateException("CoinsEngine getBalance failed", exception);
         }
-        return 0.0D;
+        throw new IllegalStateException("No supported ExcellentEconomy getBalance method");
     }
 
     @Override
@@ -213,12 +222,14 @@ public final class CoinsEngineEconomyProvider implements EconomyProvider {
         return false;
     }
 
-    private Method findBalanceMethod(Class<?> apiClass, Class<?> currencyClass) {
-        Method method = findMethod(apiClass, "getBalance", Player.class, currencyClass);
-        if (method != null) {
-            return method;
+    private Method findBalanceMethod(Class<?> apiClass, Class<?> currencyClass, OfflinePlayer player) {
+        if (player.isOnline()) {
+            Method onlineMethod = findMethod(apiClass, "getBalance", Player.class, currencyClass);
+            if (onlineMethod != null) {
+                return onlineMethod;
+            }
         }
-        method = findMethod(apiClass, "getBalance", OfflinePlayer.class, currencyClass);
+        Method method = findMethod(apiClass, "getBalance", OfflinePlayer.class, currencyClass);
         if (method != null) {
             return method;
         }
@@ -242,7 +253,7 @@ public final class CoinsEngineEconomyProvider implements EconomyProvider {
         if (first == Player.class) {
             Player online = player.getPlayer();
             if (online == null) {
-                return 0.0D;
+                throw new IllegalStateException("CoinsEngine requires an online player for balance lookup");
             }
             return method.invoke(null, online, currency);
         }

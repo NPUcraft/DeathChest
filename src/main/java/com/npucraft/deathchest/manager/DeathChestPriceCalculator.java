@@ -8,6 +8,7 @@ import com.npucraft.deathchest.util.ItemStacks;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public final class DeathChestPriceCalculator {
@@ -36,11 +37,11 @@ public final class DeathChestPriceCalculator {
         return Math.max(0.0D, price);
     }
 
-    private double round(double value, RoundingMode rounding) {
+    static double round(double value, RoundingMode rounding) {
         return switch (rounding) {
             case FLOOR -> Math.floor(value);
             case CEIL -> Math.ceil(value);
-            default -> Math.rint(value);
+            default -> BigDecimal.valueOf(value).setScale(0, java.math.RoundingMode.HALF_UP).doubleValue();
         };
     }
 }

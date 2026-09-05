@@ -48,6 +48,8 @@ public class DeathRecord {
     private RecordStatus status = RecordStatus.PREPARED;
     private String failureReason;
     private boolean rollbackInProgress;
+    private boolean itemsRestored;
+    private boolean experienceRestored;
     private List<ItemStack> items = new ArrayList<>();
 
     public String getRecordId() {
@@ -368,6 +370,22 @@ public class DeathRecord {
 
     public void setRollbackInProgress(boolean rollbackInProgress) {
         this.rollbackInProgress = rollbackInProgress;
+    }
+
+    public boolean isItemsRestored() {
+        return itemsRestored;
+    }
+
+    public void setItemsRestored(boolean itemsRestored) {
+        this.itemsRestored = itemsRestored;
+    }
+
+    public boolean isExperienceRestored() {
+        return experienceRestored;
+    }
+
+    public void setExperienceRestored(boolean experienceRestored) {
+        this.experienceRestored = experienceRestored;
     }
 
     public List<ItemStack> getItems() {

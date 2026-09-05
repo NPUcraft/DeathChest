@@ -231,7 +231,7 @@ public final class PluginSettings {
         this.mysqlUsername = config.getString("storage.mysql.username", "root");
         this.mysqlPassword = config.getString("storage.mysql.password", "");
         this.mysqlParameters = config.getString("storage.mysql.parameters",
-                "createDatabaseIfNotExist=true&sslMode=DISABLE&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci");
+                "createDatabaseIfNotExist=true&sslMode=VERIFY_IDENTITY&allowPublicKeyRetrieval=false&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci");
         this.mysqlJdbcUrl = config.getString("storage.mysql.jdbc-url", "");
         this.placeholderEnabled = config.getBoolean("placeholder.enabled", true);
 

@@ -272,7 +272,9 @@ public final class JdbcStorage implements PluginStorage {
                 statement.setString(38, record.getStatus().name());
                 statement.setString(39, record.getFailureReason());
                 statement.setInt(40, record.isRollbackInProgress() ? 1 : 0);
-                statement.setBytes(41, ItemSerializer.serialize(record.getItems()));
+                statement.setInt(41, record.isItemsRestored() ? 1 : 0);
+                statement.setInt(42, record.isExperienceRestored() ? 1 : 0);
+                statement.setBytes(43, ItemSerializer.serialize(record.getItems()));
                 statement.executeUpdate();
             } catch (SQLException exception) {
                 throw failed("Failed to save death record", exception);
@@ -302,6 +304,18 @@ public final class JdbcStorage implements PluginStorage {
                 return readRecords(statement.executeQuery());
             } catch (SQLException exception) {
                 throw failed("Failed to load death records", exception);
+            }
+        }
+    }
+
+    @Override
+    public List<DeathRecord> loadInterruptedRecords() {
+        synchronized (lock) {
+            try (PreparedStatement statement = conn().prepareStatement(
+                    "SELECT * FROM death_records WHERE rollback_in_progress=1 ORDER BY death_time")) {
+                return readRecords(statement.executeQuery());
+            } catch (SQLException exception) {
+                throw failed("Failed to load interrupted restores", exception);
             }
         }
     }
@@ -425,6 +439,20 @@ public final class JdbcStorage implements PluginStorage {
                 }
             } catch (SQLException exception) {
                 throw failed("Failed to load recovery storage", exception);
+            }
+        }
+    }
+
+    @Override
+    public Optional<RecoveryEntry> loadRecovery(String id) {
+        synchronized (lock) {
+            try (PreparedStatement statement = conn().prepareStatement("SELECT * FROM recovery_storage WHERE id=?")) {
+                statement.setString(1, id);
+                try (ResultSet result = statement.executeQuery()) {
+                    return result.next() ? Optional.of(readRecovery(result)) : Optional.empty();
+                }
+            } catch (SQLException exception) {
+                throw failed("Failed to load recovery storage entry", exception);
             }
         }
     }
@@ -620,6 +648,8 @@ public final class JdbcStorage implements PluginStorage {
         record.setStatus(RecordStatus.valueOf(result.getString("status")));
         record.setFailureReason(result.getString("failure_reason"));
         record.setRollbackInProgress(result.getInt("rollback_in_progress") != 0);
+        record.setItemsRestored(result.getInt("items_restored") != 0);
+        record.setExperienceRestored(result.getInt("experience_restored") != 0);
         record.setItems(safeDeserialize(result.getBytes("items"), "death record " + record.getRecordId()));
         return record;
     }

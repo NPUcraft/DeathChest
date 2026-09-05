@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -76,66 +77,29 @@ public final class DeathChestManager {
         if (block == null) {
             return Optional.empty();
         }
-        String id = byLocation.get(LocationKey.of(block.getLocation()));
+        LocationKey locationKey = LocationKey.of(block.getLocation());
+        String id = byLocation.get(locationKey);
         if (id != null) {
-            return byId(id);
+            Optional<DeathChestData> indexed = byId(id);
+            if (indexed.isPresent() && hasCompleteIdentity(indexed.get())) {
+                return indexed;
+            }
+            byLocation.remove(locationKey, id);
         }
         if (block.getState() instanceof TileState tile) {
             String pdcId = plugin.keys().readChestId(tile);
             if (pdcId != null) {
                 Optional<DeathChestData> existing = byId(pdcId);
-                if (existing.isPresent()) {
+                if (existing.isPresent() && hasCompleteIdentity(existing.get())
+                        && existing.get().blockKeys().contains(locationKey)) {
                     return existing;
                 }
-                return Optional.ofNullable(adoptOrphan(block, tile, pdcId));
+                plugin.getLogger().warning("Ignored untrusted or stale DeathChest PDC at "
+                        + block.getWorld().getName() + " " + block.getX() + " " + block.getY() + " " + block.getZ()
+                        + " id=" + pdcId);
             }
         }
         return Optional.empty();
-    }
-
-    private DeathChestData adoptOrphan(Block block, TileState tile, String id) {
-        UUID owner = plugin.keys().readOwnerUuid(tile);
-        if (owner == null) {
-            return null;
-        }
-        DeathChestData data = new DeathChestData();
-        data.setId(id);
-        data.setOwnerUuid(owner);
-        org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(owner);
-        data.setOwnerName(offline.getName() == null ? "Unknown" : offline.getName());
-        data.setWorld(block.getWorld().getName());
-        data.setX(block.getX());
-        data.setY(block.getY());
-        data.setZ(block.getZ());
-        data.setChestType(ChestType.SINGLE);
-        for (BlockFace face : new BlockFace[]{BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST}) {
-            Block relative = block.getRelative(face);
-            if (relative.getState() instanceof TileState partner) {
-                if (id.equals(plugin.keys().readChestId(partner))) {
-                    data.setChestType(ChestType.DOUBLE);
-                    data.setSecondX(relative.getX());
-                    data.setSecondY(relative.getY());
-                    data.setSecondZ(relative.getZ());
-                    break;
-                }
-            }
-        }
-        data.setRecordId(plugin.keys().readRecordId(tile));
-        data.setCreatedAt(plugin.keys().readLong(tile, plugin.keys().createdAt, System.currentTimeMillis()));
-        data.setUnlockAt(plugin.keys().readLong(tile, plugin.keys().unlockAt, data.getCreatedAt()));
-        data.setExpireAt(plugin.keys().readLong(tile, plugin.keys().expireAt, 0L));
-        data.setTimerPausedMillis(plugin.timerClock() == null ? 0L : plugin.timerClock().totalPaused());
-        data.setActive(true);
-        data.setLocked(false);
-        try {
-            plugin.storage().saveChest(data);
-            index(data);
-            plugin.getLogger().warning("Re-indexed death chest " + id + " from world data after a missing database row.");
-            return data;
-        } catch (RuntimeException exception) {
-            plugin.getLogger().warning("Failed to re-index death chest " + id + ": " + exception.getMessage());
-            return null;
-        }
     }
 
     public Optional<DeathChestData> byInventory(Inventory inventory) {
@@ -266,9 +230,9 @@ public final class DeathChestManager {
     public void destroySilently(DeathChestData data) {
         World world = Bukkit.getWorld(data.getWorld());
         if (world != null) {
-            clearBlock(world.getBlockAt(data.getX(), data.getY(), data.getZ()));
+            clearBlockIfOwned(world.getBlockAt(data.getX(), data.getY(), data.getZ()), data);
             if (data.getChestType() == ChestType.DOUBLE && data.getSecondX() != null) {
-                clearBlock(world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ()));
+                clearBlockIfOwned(world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ()), data);
             }
         }
         plugin.holograms().remove(data);
@@ -280,8 +244,9 @@ public final class DeathChestManager {
     public void removeAndStoreRemaining(DeathChestData data, boolean toRecovery) {
         List<ItemStack> remaining = currentItems(data);
         if (toRecovery && !remaining.isEmpty()) {
-            if (!plugin.recovery().store(data.getOwnerUuid(), data.getRecordId(), remaining)) {
-                dropItems(data, remaining);
+            if (!plugin.recovery().storeChestTransfer(data, remaining)) {
+                throw new IllegalStateException("Cannot safely remove death chest " + data.getId()
+                        + " because its remaining items could not be persisted");
             }
         }
         destroySilently(data);
@@ -290,16 +255,34 @@ public final class DeathChestManager {
     }
 
     public List<ItemStack> currentItems(DeathChestData data) {
-        Inventory inventory = inventoryOf(data);
-        return inventory == null ? List.of() : ItemStacks.fromArray(inventory.getContents());
+        World world = Bukkit.getWorld(data.getWorld());
+        if (world == null || !chunkLoaded(data)) {
+            return List.of();
+        }
+        List<ItemStack> items = new ArrayList<>();
+        appendOwnedBlockItems(world.getBlockAt(data.getX(), data.getY(), data.getZ()), data, items);
+        if (data.getChestType() == ChestType.DOUBLE && data.getSecondX() != null) {
+            appendOwnedBlockItems(world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ()), data, items);
+        }
+        return items;
     }
 
     public Inventory inventoryOf(DeathChestData data) {
         World world = Bukkit.getWorld(data.getWorld());
-        if (world == null) {
+        if (world == null || !chunkLoaded(data)) {
             return null;
         }
-        return inventoryOf(world.getBlockAt(data.getX(), data.getY(), data.getZ()));
+        Block primary = world.getBlockAt(data.getX(), data.getY(), data.getZ());
+        if (!isOwnedBlock(primary, data)) {
+            return null;
+        }
+        if (data.getChestType() == ChestType.DOUBLE && data.getSecondX() != null) {
+            Block secondary = world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ());
+            if (!isOwnedBlock(secondary, data)) {
+                return null;
+            }
+        }
+        return inventoryOf(primary);
     }
 
     public Inventory inventoryOf(Block block) {
@@ -317,8 +300,11 @@ public final class DeathChestManager {
         if (!chunkLoaded(data)) {
             return true;
         }
-        Block block = world.getBlockAt(data.getX(), data.getY(), data.getZ());
-        return block.getType() == Material.CHEST || block.getType() == Material.TRAPPED_CHEST || block.getType() == plugin.settings().chestBlockType;
+        if (!isOwnedBlock(world.getBlockAt(data.getX(), data.getY(), data.getZ()), data)) {
+            return false;
+        }
+        return data.getChestType() != ChestType.DOUBLE || data.getSecondX() == null
+                || isOwnedBlock(world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ()), data);
     }
 
     public boolean chunkLoaded(DeathChestData data) {
@@ -338,12 +324,27 @@ public final class DeathChestManager {
             return;
         }
         if (!existsInWorld(chest)) {
-            destroySilently(chest);
+            plugin.getLogger().warning("Death chest blocks no longer match stored PDC identity; preserving any verified remainder: "
+                    + chest.getId());
+            removeAndStoreRemaining(chest, true);
             return;
         }
         if (plugin.settings().publicTimeSeconds > 0 && chest.getExpireAt() > 0 && now >= chest.getExpireAt()) {
             expire(chest);
         }
+    }
+
+    public int reconcilePendingTransfers() {
+        int reconciled = 0;
+        for (DeathChestData chest : List.copyOf(byId.values())) {
+            if (!plugin.recovery().hasChestTransfer(chest)) {
+                continue;
+            }
+            destroySilently(chest);
+            reconciled++;
+            plugin.getLogger().warning("Completed interrupted death-chest transfer: " + chest.getId());
+        }
+        return reconciled;
     }
 
     public long maxTimerPausedMillis() {
@@ -429,7 +430,8 @@ public final class DeathChestManager {
     }
 
     public void syncPdc(Block block, DeathChestData data) {
-        if (block == null || !block.getChunk().isLoaded() || !(block.getState() instanceof TileState tile)) {
+        if (block == null || !block.getChunk().isLoaded() || !(block.getState() instanceof TileState tile)
+                || !isOwnedBlock(block, data)) {
             return;
         }
         long unlock = plugin.keys().readLong(tile, plugin.keys().unlockAt, Long.MIN_VALUE);
@@ -596,6 +598,41 @@ public final class DeathChestManager {
             chest.update(true, false);
         }
         block.setType(Material.AIR, false);
+    }
+
+    private boolean isOwnedBlock(Block block, DeathChestData data) {
+        if (block == null || data == null || !(block.getState() instanceof TileState tile)) {
+            return false;
+        }
+        LocationKey key = LocationKey.of(block.getLocation());
+        return data.blockKeys().contains(key)
+                && data.getId().equals(plugin.keys().readChestId(tile))
+                && Objects.equals(data.getRecordId(), plugin.keys().readRecordId(tile))
+                && Objects.equals(data.getOwnerUuid(), plugin.keys().readOwnerUuid(tile))
+                && data.getCreatedAt() == plugin.keys().readLong(tile, plugin.keys().createdAt, Long.MIN_VALUE);
+    }
+
+    private boolean hasCompleteIdentity(DeathChestData data) {
+        World world = Bukkit.getWorld(data.getWorld());
+        if (world == null || !chunkLoaded(data)
+                || !isOwnedBlock(world.getBlockAt(data.getX(), data.getY(), data.getZ()), data)) {
+            return false;
+        }
+        return data.getChestType() != ChestType.DOUBLE || data.getSecondX() == null
+                || isOwnedBlock(world.getBlockAt(data.getSecondX(), data.getSecondY(), data.getSecondZ()), data);
+    }
+
+    private void appendOwnedBlockItems(Block block, DeathChestData data, List<ItemStack> items) {
+        if (!isOwnedBlock(block, data) || !(block.getState() instanceof org.bukkit.block.Chest chest)) {
+            return;
+        }
+        items.addAll(ItemStacks.fromArray(chest.getBlockInventory().getContents()));
+    }
+
+    private void clearBlockIfOwned(Block block, DeathChestData data) {
+        if (isOwnedBlock(block, data)) {
+            clearBlock(block);
+        }
     }
 
     private void index(DeathChestData data) {

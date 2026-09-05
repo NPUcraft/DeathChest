@@ -64,8 +64,8 @@ public abstract class SqlDialect {
                     calculated_price, charged_price, insufficient_balance, insufficient_balance_mode, death_chest_enabled,
                     death_chest_created, death_chest_id, death_chest_world, death_chest_x, death_chest_y,
                     death_chest_z, chest_type, is_protected, unlock_at, expire_at, status, failure_reason,
-                    rollback_in_progress, items)
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    rollback_in_progress, items_restored, experience_restored, items)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
     }
 }

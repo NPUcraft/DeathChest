@@ -99,9 +99,14 @@ public final class ProtectionListener implements Listener {
         if (player.hasPermission("deathchest.break.bypass")) {
             plugin.audit().player(player.getName(), "破坏死亡箱（bypass）",
                     "chest=" + chest.getId() + " 主人=" + chest.getOwnerName() + " " + AuditLogger.location(chest));
-            plugin.chests().removeAndStoreRemaining(chest, true);
-            event.setDropItems(false);
             event.setCancelled(true);
+            try {
+                plugin.chests().removeAndStoreRemaining(chest, true);
+                event.setDropItems(false);
+            } catch (RuntimeException exception) {
+                plugin.getLogger().severe("Failed to safely remove death chest " + chest.getId() + ": " + exception.getMessage());
+                plugin.messages().send(player, "chest-remove-storage-failed");
+            }
             return;
         }
         boolean owner = chest.getOwnerUuid().equals(player.getUniqueId());
@@ -118,9 +123,14 @@ public final class ProtectionListener implements Listener {
         }
         plugin.audit().player(player.getName(), "破坏死亡箱",
                 "chest=" + chest.getId() + " 主人=" + chest.getOwnerName() + " " + AuditLogger.location(chest));
-        plugin.chests().removeAndStoreRemaining(chest, true);
-        event.setDropItems(false);
         event.setCancelled(true);
+        try {
+            plugin.chests().removeAndStoreRemaining(chest, true);
+            event.setDropItems(false);
+        } catch (RuntimeException exception) {
+            plugin.getLogger().severe("Failed to safely remove death chest " + chest.getId() + ": " + exception.getMessage());
+            plugin.messages().send(player, "chest-remove-storage-failed");
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

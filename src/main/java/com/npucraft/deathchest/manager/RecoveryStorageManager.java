@@ -1,6 +1,8 @@
 package com.npucraft.deathchest.manager;
 
 import com.npucraft.deathchest.DeathChestPlugin;
+import com.npucraft.deathchest.model.DeathChestData;
+import com.npucraft.deathchest.model.DeathRecord;
 import com.npucraft.deathchest.model.RecoveryEntry;
 import com.npucraft.deathchest.util.Ids;
 import com.npucraft.deathchest.util.ItemStacks;
@@ -11,6 +13,7 @@ import org.bukkit.inventory.PlayerInventory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public final class RecoveryStorageManager {
@@ -21,11 +24,37 @@ public final class RecoveryStorageManager {
     }
 
     public boolean store(UUID player, String recordId, List<ItemStack> items) {
-        if (!plugin.settings().recoveryEnabled || items == null || items.isEmpty()) {
+        return storeWithId(Ids.recoveryId(), player, recordId, items, false);
+    }
+
+    public boolean storeChestTransfer(DeathChestData chest, List<ItemStack> items) {
+        if (chest == null) {
             return false;
         }
+        return storeWithId(chestTransferId(chest.getId()), chest.getOwnerUuid(), chest.getRecordId(), items, true);
+    }
+
+    public boolean storeRestore(DeathRecord record, List<ItemStack> items) {
+        if (record == null) {
+            return false;
+        }
+        return storeWithId(restoreTransferId(record.getRecordId()), record.getPlayerUuid(), record.getRecordId(), items, false);
+    }
+
+    private boolean storeWithId(String id, UUID player, String recordId, List<ItemStack> items, boolean allowEmpty) {
+        if (!plugin.settings().recoveryEnabled || items == null || (!allowEmpty && items.isEmpty())) {
+            return false;
+        }
+        var existing = plugin.storage().loadRecovery(id);
+        if (existing.isPresent()) {
+            RecoveryEntry saved = existing.get();
+            if (!Objects.equals(player, saved.getPlayerUuid()) || !Objects.equals(recordId, saved.getRecordId())) {
+                throw new IllegalStateException("Recovery transfer ID collision: " + id);
+            }
+            return true;
+        }
         RecoveryEntry entry = new RecoveryEntry();
-        entry.setId(Ids.recoveryId());
+        entry.setId(id);
         entry.setPlayerUuid(player);
         entry.setRecordId(recordId);
         entry.setItems(ItemStacks.deepCopy(items));
@@ -39,19 +68,34 @@ public final class RecoveryStorageManager {
         return true;
     }
 
-    public List<ItemStack> takeItems(UUID player, String recordId) {
-        List<ItemStack> taken = new ArrayList<>();
-        if (player == null || recordId == null) {
-            return taken;
+    public boolean hasChestTransfer(DeathChestData chest) {
+        if (chest == null || chest.getId() == null) {
+            return false;
         }
-        for (RecoveryEntry entry : plugin.storage().loadRecovery(player)) {
-            if (!recordId.equals(entry.getRecordId())) {
-                continue;
-            }
-            taken.addAll(ItemStacks.deepCopy(entry.getItems()));
-            plugin.storage().deleteRecovery(entry.getId());
+        return plugin.storage().loadRecovery(chestTransferId(chest.getId()))
+                .filter(entry -> Objects.equals(chest.getOwnerUuid(), entry.getPlayerUuid()))
+                .filter(entry -> Objects.equals(chest.getRecordId(), entry.getRecordId()))
+                .isPresent();
+    }
+
+    public boolean hasRestoreArtifacts(DeathRecord record) {
+        if (record == null || record.getRecordId() == null) {
+            return false;
         }
-        return taken;
+        if (plugin.storage().loadRecovery(restoreTransferId(record.getRecordId())).isPresent()) {
+            return true;
+        }
+        return plugin.storage().loadRecovery(record.getPlayerUuid()).stream()
+                .anyMatch(entry -> record.getRecordId().equals(entry.getRecordId())
+                        && entry.getId().startsWith("CX-"));
+    }
+
+    public static String chestTransferId(String chestId) {
+        return "CX-" + chestId;
+    }
+
+    public static String restoreTransferId(String recordId) {
+        return "RX-" + recordId;
     }
 
     public boolean hasPending(UUID player) {
@@ -73,34 +117,56 @@ public final class RecoveryStorageManager {
             if (!player.isOnline()) {
                 break;
             }
+            ItemStack[] inventoryBefore = ItemStacks.cloneArray(inventory.getStorageContents());
             List<ItemStack> remaining = new ArrayList<>();
+            int entryTakenStacks = 0;
+            int entryLeftStacks = 0;
             for (ItemStack item : ItemStacks.deepCopy(entry.getItems())) {
                 if (ItemStacks.isEmpty(item)) {
                     continue;
                 }
                 if (!player.isOnline()) {
                     remaining.add(item);
+                    entryLeftStacks++;
                     continue;
                 }
+                int originalAmount = item.getAmount();
                 HashMap<Integer, ItemStack> leftover = inventory.addItem(item);
                 if (leftover.isEmpty()) {
-                    takenStacks++;
+                    entryTakenStacks++;
                 } else {
-                    ItemStack left = leftover.values().iterator().next();
-                    int added = item.getAmount() - left.getAmount();
+                    int leftoverAmount = leftover.values().stream().mapToInt(ItemStack::getAmount).sum();
+                    int added = originalAmount - leftoverAmount;
                     if (added > 0) {
-                        takenStacks++;
+                        entryTakenStacks++;
                     }
-                    remaining.add(left);
-                    leftStacks++;
+                    remaining.addAll(ItemStacks.deepCopy(leftover.values()));
+                    entryLeftStacks += leftover.size();
                 }
             }
-            if (remaining.isEmpty()) {
-                plugin.storage().deleteRecovery(entry.getId());
-            } else {
-                entry.setItems(remaining);
-                plugin.storage().saveRecovery(entry);
+            try {
+                if (remaining.isEmpty()) {
+                    plugin.storage().deleteRecovery(entry.getId());
+                } else {
+                    entry.setItems(remaining);
+                    plugin.storage().saveRecovery(entry);
+                }
+            } catch (RuntimeException exception) {
+                inventory.setStorageContents(inventoryBefore);
+                plugin.getLogger().severe("领取恢复仓库时数据库写入失败，已回滚玩家背包：player="
+                        + player.getUniqueId() + " recovery=" + entry.getId() + " error=" + exception.getMessage());
+                break;
             }
+            takenStacks += entryTakenStacks;
+            leftStacks += entryLeftStacks;
+        }
+        try {
+            leftStacks = activeEntries(player.getUniqueId()).stream()
+                    .mapToInt(entry -> ItemStacks.stackCount(entry.getItems()))
+                    .sum();
+        } catch (RuntimeException exception) {
+            plugin.getLogger().warning("无法重新统计恢复仓库剩余物品：player=" + player.getUniqueId()
+                    + " error=" + exception.getMessage());
         }
         RecoverResult result = new RecoverResult(takenStacks, leftStacks);
         plugin.audit().player(player.getName(), "领取恢复仓库",

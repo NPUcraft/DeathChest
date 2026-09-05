@@ -113,6 +113,8 @@ public final class SqliteDialect extends SqlDialect {
                     status TEXT NOT NULL,
                     failure_reason TEXT,
                     rollback_in_progress INTEGER NOT NULL,
+                    items_restored INTEGER NOT NULL DEFAULT 0,
+                    experience_restored INTEGER NOT NULL DEFAULT 0,
                     items BLOB
                 )
                 """);
@@ -148,6 +150,8 @@ public final class SqliteDialect extends SqlDialect {
         createIndexIfAbsent(connection, "CREATE INDEX IF NOT EXISTS idx_recovery_player ON recovery_storage(player_uuid)");
         createIndexIfAbsent(connection, "CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_log(timestamp)");
         addColumnIfAbsent(connection, "ALTER TABLE death_chests ADD COLUMN timer_paused_millis INTEGER NOT NULL DEFAULT 0");
+        addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN items_restored INTEGER NOT NULL DEFAULT 0");
+        addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN experience_restored INTEGER NOT NULL DEFAULT 0");
         dropColumnIfPresent(connection, "death_records", "next_death_public");
         dropColumnIfPresent(connection, "death_records", "pinned");
     }
@@ -205,6 +209,8 @@ public final class SqliteDialect extends SqlDialect {
                     status=excluded.status,
                     failure_reason=excluded.failure_reason,
                     rollback_in_progress=excluded.rollback_in_progress,
+                    items_restored=excluded.items_restored,
+                    experience_restored=excluded.experience_restored,
                     items=excluded.items
                 """;
     }
@@ -233,7 +239,9 @@ public final class SqliteDialect extends SqlDialect {
                     expire_at=excluded.expire_at,
                     status=excluded.status,
                     failure_reason=excluded.failure_reason,
-                    rollback_in_progress=excluded.rollback_in_progress
+                    rollback_in_progress=excluded.rollback_in_progress,
+                    items_restored=excluded.items_restored,
+                    experience_restored=excluded.experience_restored
                 """;
     }
 
