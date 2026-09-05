@@ -8,6 +8,7 @@ import com.npucraft.deathchest.util.Texts;
 import com.npucraft.deathchest.util.TimeFormats;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 import java.time.format.DateTimeFormatter;
@@ -71,6 +72,8 @@ public final class PlaceholderManager {
         List<DeathChestData> chests = plugin.chests().byOwner(player.getUniqueId());
         DeathChestData last = chests.isEmpty() ? null : chests.getFirst();
         return switch (params.toLowerCase()) {
+            case "global_enabled" -> String.valueOf(plugin.settings().enabled);
+            case "tab_footer" -> tabFooter(player, last);
             case "enabled" -> (plugin.settings().enabled && plugin.playerSettings().isEnabled(player.getUniqueId())) ? "true" : "false";
             case "estimated_price", "estimated_cost" -> Texts.formatNumber(plugin.estimatedDeathPrice(player));
             case "estimated_currency" -> plugin.economy().provider().getCurrencyName();
@@ -142,6 +145,45 @@ public final class PlaceholderManager {
                     settings.enabled && plugin.playerSettings().isEnabled(player.getUniqueId())));
         }
         return values;
+    }
+
+    private String tabFooter(Player player, DeathChestData last) {
+        StringBuilder footer = new StringBuilder("<newline><gold>DeathChest：</gold>");
+        if (plugin.settings().enabled) {
+            footer.append("<green>开</green><white> ｜ </white><gold>预消耗：</gold><yellow>")
+                    .append(Texts.formatNumber(plugin.estimatedDeathPrice(player))).append("🍉</yellow>");
+        } else {
+            footer.append("<red>关</red>");
+        }
+        if (last != null) {
+            long now = System.currentTimeMillis();
+            boolean protectedChest = last.isProtected(now);
+            long target = protectedChest ? last.getUnlockAt() : last.getExpireAt();
+            String label = protectedChest ? "保护剩余："
+                    : plugin.settings().expireMode == com.npucraft.deathchest.model.ExpireMode.DROP_ITEMS
+                    ? "掉落剩余：" : "清理剩余：";
+            footer.append("<newline><gold>死亡点：</gold><aqua>")
+                    .append(displayWorld(last.getWorld())).append("(")
+                    .append(last.getX()).append(", ").append(last.getY()).append(", ").append(last.getZ())
+                    .append(")</aqua><white> ｜ </white><gold>").append(label)
+                    .append("</gold><yellow>")
+                    .append(target <= 0L ? "永久" : TimeFormats.durationHms(TimeFormats.remaining(target, now)))
+                    .append("</yellow>");
+        }
+        return footer.toString();
+    }
+
+    private String displayWorld(String worldName) {
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            return worldName;
+        }
+        return switch (world.getEnvironment()) {
+            case NORMAL -> "Overworld";
+            case NETHER -> "Nether";
+            case THE_END -> "End";
+            default -> worldName;
+        };
     }
 
     public String remaining(long target) {

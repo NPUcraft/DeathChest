@@ -7,6 +7,15 @@ import java.time.Instant;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TimeFormatsTest {
+    @Test
+    void formatsTabCountdownWithTotalHoursAndAllUnits() {
+        assertEquals("51时4分5秒", TimeFormats.durationHms(183_845_000L));
+        assertEquals("0时0分1秒", TimeFormats.durationHms(1L));
+        assertEquals("1时0分0秒", TimeFormats.durationHms(3_599_001L));
+        assertEquals("0时0分0秒", TimeFormats.durationHms(0L));
+        assertEquals("0时0分0秒", TimeFormats.durationHms(-1L));
+    }
+
     private static final String DAYS = "{days}天{hours}小时{minutes}分钟{seconds}秒";
     private static final String HOURS = "{hours}小时{minutes}分钟{seconds}秒";
     private static final String MINUTES = "{minutes}分钟{seconds}秒";

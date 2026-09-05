@@ -6,7 +6,7 @@
 
     <groupId>com.npucraft</groupId>
     <artifactId>DeathChest</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
     <name>DeathChest</name>
     <description>Paper death chest plugin with anti-dupe transactions, economy, holograms, and admin restore.</description>

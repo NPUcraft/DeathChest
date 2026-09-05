@@ -63,4 +63,9 @@ public final class TimeFormats {
     public static long remaining(long target, long now) {
         return Math.max(0L, target - now);
     }
+
+    public static String durationHms(long millis) {
+        long seconds = millis <= 0L ? 0L : 1L + (millis - 1L) / 1000L;
+        return seconds / 3600L + "时" + seconds % 3600L / 60L + "分" + seconds % 60L + "秒";
+    }
 }

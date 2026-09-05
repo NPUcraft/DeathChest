@@ -1,0 +1,6 @@
+# 将 default 分组中的 footers 替换为下面的内容；其他配置保持原样。
+# 条件兼容原始服务器名与当前 placeholder_replacements 中的带颜色名称。
+# 必须先在三个生存后端服安装包含 deathchest_tab_footer 的新版 DeathChest。
+footers:
+  - >-
+    <gold>在线玩家：</gold><yellow>%local_players_online%</yellow><white>/</white><yellow>%players_online%</yellow><gold>人</gold><white> | </white><gold>余额：</gold><red>%coinsengine_balance_coins%</red><velocitab_condition:"%server%" == ''Survival-Main'' OR "%server%" == ''Survival-Industry'' OR "%server%" == ''Survival-Resource'' OR "%server%" == ''<green><b>主服</b></green>'' OR "%server%" == ''<green><b>工业服</b></green>'' OR "%server%" == ''<green><b>资源服</b></green>'':%deathchest_tab_footer%:>

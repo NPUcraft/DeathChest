@@ -55,7 +55,7 @@ mvn clean package
 mvn -DskipTests clean package
 ```
 
-构建产物为 `target/DeathChest-1.0.1.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
+构建产物为 `target/DeathChest-1.0.2.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
 
 - `plugins/DeathChest/config.yml`
 - `plugins/DeathChest/message_zh.yml`
