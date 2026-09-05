@@ -8,6 +8,8 @@ import com.npucraft.deathchest.manager.RollbackManager;
 import com.npucraft.deathchest.util.Texts;
 import com.npucraft.deathchest.util.TimeFormats;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -22,7 +24,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 public final class DeathChestCommand implements CommandExecutor {
     private final DeathChestPlugin plugin;
@@ -44,11 +45,9 @@ public final class DeathChestCommand implements CommandExecutor {
             case "on" -> toggle(sender, true);
             case "off" -> toggle(sender, false);
             case "status" -> status(sender);
-            case "list" -> list(sender, args);
             case "info" -> info(sender, args);
             case "unlock" -> unlock(sender, args);
             case "reload" -> reload(sender);
-            case "history" -> history(sender, args);
             case "tp", "teleport" -> teleport(sender, args);
             case "restore" -> restore(sender, args);
             case "records" -> records(sender, args);
@@ -114,100 +113,116 @@ public final class DeathChestCommand implements CommandExecutor {
         return true;
     }
 
-    private boolean list(CommandSender sender, String[] args) {
-        UUID target;
-        String name;
-        if (args.length >= 2) {
-            if (!sender.hasPermission("deathchest.list.others") && !sender.hasPermission("deathchest.admin")) {
-                plugin.messages().send(sender, "no-permission");
-                return true;
-            }
-            OfflinePlayer offline = findPlayer(args[1]);
-            if (offline == null) {
-                plugin.messages().send(sender, "player-not-found", Map.of("player", args[1]));
-                return true;
-            }
-            target = offline.getUniqueId();
-            name = offline.getName() == null ? args[1] : offline.getName();
-        } else {
-            if (!(sender instanceof Player player)) {
-                plugin.messages().send(sender, "player-only");
-                return true;
-            }
-            if (!has(player, "deathchest.list")) {
-                return true;
-            }
-            target = player.getUniqueId();
-            name = player.getName();
-        }
-        List<DeathChestData> chests = plugin.chests().byOwner(target);
-        plugin.messages().send(sender, "list-header", Map.of("player", name));
-        if (chests.isEmpty()) {
-            plugin.messages().send(sender, "list-empty");
+    private boolean info(CommandSender sender, String[] args) {
+        Player viewer = asPlayer(sender);
+        if (viewer == null || !has(viewer, "deathchest.info")) {
             return true;
         }
-        long now = System.currentTimeMillis();
-        for (DeathChestData chest : chests) {
-            plugin.messages().send(sender, "list-entry", Map.of(
-                    "id", chest.getId(),
-                    "world", chest.getWorld(),
-                    "x", String.valueOf(chest.getX()),
-                    "y", String.valueOf(chest.getY()),
-                    "z", String.valueOf(chest.getZ()),
-                    "state", plugin.chests().stateLabel(chest, now),
-                    "items", String.valueOf(plugin.chests().currentItems(chest).size())
-            ));
+        if (args.length >= 3 && args[1].equalsIgnoreCase("view")) {
+            Optional<DeathRecord> selected = plugin.records().get(args[2]);
+            if (selected.isEmpty()) {
+                plugin.messages().send(viewer, "invalid-id", Map.of("id", args[2]));
+                return true;
+            }
+            if (!canView(viewer, selected.get())) {
+                plugin.messages().send(viewer, "no-permission");
+                return true;
+            }
+            openItems(viewer, selected.get(), 1);
+            return true;
+        }
+
+        OfflinePlayer target = viewer;
+        String mode = null;
+        if (args.length >= 2) {
+            if (isInfoMode(args[1])) {
+                mode = args[1].toLowerCase(Locale.ROOT);
+            } else {
+                if (!viewer.hasPermission("deathchest.info.others") && !viewer.hasPermission("deathchest.admin")) {
+                    plugin.messages().send(viewer, "no-permission");
+                    return true;
+                }
+                target = findPlayer(args[1]);
+                if (target == null) {
+                    plugin.messages().send(viewer, "player-not-found", Map.of("player", args[1]));
+                    return true;
+                }
+                if (args.length >= 3) {
+                    if (!isInfoMode(args[2])) {
+                        plugin.messages().send(viewer, "info-invalid-filter");
+                        return true;
+                    }
+                    mode = args[2].toLowerCase(Locale.ROOT);
+                }
+            }
+        }
+
+        int limit = plugin.settings().maxRecordsPerPlayer > 0 ? plugin.settings().maxRecordsPerPlayer : 1000;
+        List<DeathRecord> records = plugin.records().history(target.getUniqueId(), limit).stream()
+                .filter(DeathRecord::isDeathChestCreated)
+                .toList();
+        if (mode == null) {
+            if (records.isEmpty()) {
+                plugin.messages().send(viewer, "info-empty");
+            } else {
+                openItems(viewer, records.getFirst(), 1);
+            }
+            return true;
+        }
+
+        String selectedMode = mode;
+        List<DeathRecord> filtered = records.stream().filter(record -> matchesInfoMode(record, selectedMode)).toList();
+        String targetName = target.getName() == null ? target.getUniqueId().toString() : target.getName();
+        plugin.messages().send(viewer, "info-list-header", Map.of("player", targetName, "filter", mode));
+        if (filtered.isEmpty()) {
+            plugin.messages().send(viewer, "info-empty");
+            return true;
+        }
+        DateTimeFormatter formatter = TimeFormats.formatter(plugin.settings().dateFormat, plugin.settings().timezone);
+        for (DeathRecord record : filtered) {
+            boolean active = !plugin.chests().byRecord(record.getRecordId()).isEmpty();
+            Map<String, String> values = Map.of(
+                    "id", record.getDeathChestId() == null ? record.getRecordId() : record.getDeathChestId(),
+                    "time", TimeFormats.formatInstant(record.getDeathTime(), formatter),
+                    "state", infoState(record, active),
+                    "items", String.valueOf(record.getItems().size()),
+                    "price", Texts.formatNumber(record.getChargedPrice())
+            );
+            Component line = plugin.messages().component(viewer,
+                            plugin.messages().raw("info-list-entry", "%id%"), values, false)
+                    .clickEvent(ClickEvent.runCommand("/deathchest info view " + record.getRecordId()))
+                    .hoverEvent(HoverEvent.showText(plugin.messages().component(viewer,
+                            plugin.messages().raw("info-list-hover", "点击预览"), Map.of(), false)));
+            viewer.sendMessage(line);
         }
         return true;
     }
 
-    private boolean info(CommandSender sender, String[] args) {
-        if (args.length < 2) {
-            plugin.messages().sendHelp(sender);
-            return true;
+    private boolean isInfoMode(String value) {
+        return value.equalsIgnoreCase("all") || value.equalsIgnoreCase("activate")
+                || value.equalsIgnoreCase("inactive");
+    }
+
+    private boolean matchesInfoMode(DeathRecord record, String mode) {
+        boolean active = !plugin.chests().byRecord(record.getRecordId()).isEmpty();
+        return mode.equals("all") || (mode.equals("activate") && active)
+                || (mode.equals("inactive") && !active && record.getStatus() != com.npucraft.deathchest.model.RecordStatus.EXPIRED);
+    }
+
+    private String infoState(DeathRecord record, boolean active) {
+        if (active) {
+            return plugin.messages().raw("info-state-active", "活动");
         }
-        if (!sender.hasPermission("deathchest.info") && !sender.hasPermission("deathchest.admin")) {
-            plugin.messages().send(sender, "no-permission");
-            return true;
-        }
-        Optional<DeathChestData> optional = plugin.chests().byId(args[1]);
-        if (optional.isEmpty()) {
-            plugin.messages().send(sender, "invalid-id", Map.of("id", args[1]));
-            return true;
-        }
-        DeathChestData chest = optional.get();
-        if (sender instanceof Player player
-                && !player.getUniqueId().equals(chest.getOwnerUuid())
-                && !player.hasPermission("deathchest.list.others")
-                && !player.hasPermission("deathchest.admin")) {
-            plugin.messages().send(player, "no-permission");
-            return true;
-        }
-        DateTimeFormatter formatter = TimeFormats.formatter(plugin.settings().dateFormat, plugin.settings().timezone);
-        plugin.messages().send(sender, "info-header", Map.of("id", chest.getId()));
-        plugin.messages().send(sender, "info-owner", Map.of("owner", chest.getOwnerName()));
-        plugin.messages().send(sender, "info-location", Map.of(
-                "world", chest.getWorld(),
-                "x", String.valueOf(chest.getX()),
-                "y", String.valueOf(chest.getY()),
-                "z", String.valueOf(chest.getZ())
-        ));
-        plugin.messages().send(sender, "info-type", Map.of("type", chest.getChestType().name()));
-        plugin.messages().send(sender, "info-price", Map.of("price", Texts.formatNumber(chest.getPrice()), "currency", String.valueOf(chest.getCurrency())));
-        plugin.messages().send(sender, "info-state", Map.of("state", plugin.chests().stateLabel(chest, System.currentTimeMillis())));
-        plugin.messages().send(sender, "info-created", Map.of("created", TimeFormats.formatInstant(chest.getCreatedAt(), formatter)));
-        plugin.messages().send(sender, "info-unlock", Map.of("unlock", TimeFormats.formatInstant(chest.getUnlockAt(), formatter)));
-        plugin.messages().send(sender, "info-expire", Map.of("expire", TimeFormats.formatInstant(chest.getExpireAt(), formatter)));
-        if (!(sender instanceof Player player)) {
-            return true;
-        }
-        Optional<DeathRecord> record = chest.getRecordId() == null ? Optional.empty() : plugin.records().get(chest.getRecordId());
-        if (record.isEmpty()) {
-            plugin.messages().send(player, "info-no-snapshot");
-            return true;
-        }
-        openItems(player, record.get(), 1);
-        return true;
+        return switch (record.getStatus()) {
+            case EXPIRED -> plugin.messages().raw("info-state-expired", "已过期");
+            case ADMIN_RESTORED, ROLLED_BACK, PARTIALLY_RESTORED -> plugin.messages().raw("info-state-restored", "已恢复");
+            default -> plugin.messages().raw("info-state-inactive", "已提取");
+        };
+    }
+
+    private boolean canView(Player viewer, DeathRecord record) {
+        return viewer.getUniqueId().equals(record.getPlayerUuid())
+                || viewer.hasPermission("deathchest.info.others") || viewer.hasPermission("deathchest.admin");
     }
 
     private boolean reload(CommandSender sender) {
@@ -219,58 +234,15 @@ public final class DeathChestCommand implements CommandExecutor {
         return true;
     }
 
-    private boolean history(CommandSender sender, String[] args) {
-        if (!hasAny(sender, "deathchest.history")) {
-            return true;
-        }
-        OfflinePlayer target;
-        if (args.length >= 2) {
-            if (!sender.hasPermission("deathchest.history.others") && !sender.hasPermission("deathchest.admin")
-                    && !(sender instanceof Player player && player.getName().equalsIgnoreCase(args[1]))) {
-                plugin.messages().send(sender, "no-permission");
-                return true;
-            }
-            target = findPlayer(args[1]);
-            if (target == null) {
-                plugin.messages().send(sender, "player-not-found", Map.of("player", args[1]));
-                return true;
-            }
-        } else if (sender instanceof Player player) {
-            target = player;
-        } else {
-            plugin.messages().send(sender, "player-only");
-            return true;
-        }
-        List<DeathRecord> records = plugin.records().history(target.getUniqueId(), 15);
-        plugin.messages().send(sender, "history-header", Map.of("player", target.getName() == null ? args[args.length - 1] : target.getName()));
-        if (records.isEmpty()) {
-            plugin.messages().send(sender, "history-empty");
-            return true;
-        }
-        DateTimeFormatter formatter = TimeFormats.formatter(plugin.settings().dateFormat, plugin.settings().timezone);
-        for (DeathRecord record : records) {
-            plugin.messages().send(sender, "history-entry", Map.of(
-                    "id", record.getRecordId(),
-                    "time", TimeFormats.formatInstant(record.getDeathTime(), formatter),
-                    "cause", String.valueOf(record.getDeathCause()),
-                    "status", record.getStatus().name(),
-                    "items", String.valueOf(record.getItems().size()),
-                    "price", Texts.formatNumber(record.getChargedPrice())
-            ));
-        }
-        return true;
-    }
-
     public void openItems(Player player, DeathRecord record, int page) {
         Component title = plugin.messages().component(player, plugin.messages().raw("record-items-title", "Items"), plugin.messages().map(
                 "id", record.getRecordId(),
                 "page", String.valueOf(page),
                 "pages", String.valueOf(Math.max(1, (int) Math.ceil(record.getItems().size() / 45.0D)))
         ), false);
-        ReadOnlyItemsGui gui = new ReadOnlyItemsGui(record, page, title,
-                plugin.messages().raw("gui-prev-page", "上一页"),
-                plugin.messages().raw("gui-next-page", "下一页"),
-                plugin.messages().raw("gui-readonly-hint", "只读预览，无法取出物品"));
+        boolean adminControls = player.hasPermission("deathchest.restore")
+                || player.hasPermission("deathchest.admin");
+        ReadOnlyItemsGui gui = new ReadOnlyItemsGui(record, page, title, plugin.messages(), adminControls);
         player.openInventory(gui.getInventory());
     }
 
@@ -339,22 +311,64 @@ public final class DeathChestCommand implements CommandExecutor {
         if (!hasAny(sender, "deathchest.restore")) {
             return true;
         }
-        if (args.length < 2) {
+        if (args.length < 3) {
             plugin.messages().sendHelp(sender);
+            return true;
+        }
+        OfflinePlayer selectedPlayer = findPlayer(args[1]);
+        if (selectedPlayer == null) {
+            plugin.messages().send(sender, "player-not-found", Map.of("player", args[1]));
+            return true;
+        }
+        Player target = Bukkit.getPlayer(selectedPlayer.getUniqueId());
+        if (target == null || !target.isOnline()) {
+            plugin.messages().send(sender, "restore-target-offline", Map.of("player", args[1]));
+            return true;
+        }
+        Optional<DeathRecord> optional = plugin.records().get(args[2]);
+        if (optional.isEmpty()) {
+            optional = plugin.chests().byId(args[2])
+                    .flatMap(chest -> plugin.records().get(chest.getRecordId()));
+        }
+        if (optional.isEmpty()) {
+            optional = plugin.storage().loadRecordByChestId(args[2]);
+        }
+        if (optional.isEmpty()) {
+            plugin.messages().send(sender, "invalid-id", Map.of("id", args[2]));
+            return true;
+        }
+        if (!optional.get().getPlayerUuid().equals(target.getUniqueId())) {
+            plugin.messages().send(sender, "restore-player-mismatch", Map.of(
+                    "player", target.getName(), "id", args[2]));
             return true;
         }
         boolean force = false;
         RestorePart part = RestorePart.ALL;
-        for (int i = 2; i < args.length; i++) {
+        boolean partSpecified = false;
+        for (int i = 3; i < args.length; i++) {
             String arg = args[i].toLowerCase(Locale.ROOT);
-            if (arg.equals("--force") || arg.equals("-force") || arg.equals("force")) {
+            if (arg.equals("--force")) {
+                if (force) {
+                    plugin.messages().sendHelp(sender);
+                    return true;
+                }
                 force = true;
-            } else if (arg.equals("items")) {
-                part = RestorePart.ITEMS;
-            } else if (arg.equals("exp")) {
-                part = RestorePart.EXP;
-            } else if (arg.equals("all")) {
-                part = RestorePart.ALL;
+            } else {
+                if (partSpecified) {
+                    plugin.messages().sendHelp(sender);
+                    return true;
+                }
+                part = switch (arg) {
+                    case "item" -> RestorePart.ITEMS;
+                    case "exp" -> RestorePart.EXP;
+                    case "all" -> RestorePart.ALL;
+                    default -> null;
+                };
+                if (part == null) {
+                    plugin.messages().sendHelp(sender);
+                    return true;
+                }
+                partSpecified = true;
             }
         }
         if (force && !plugin.settings().allowForce) {
@@ -371,24 +385,17 @@ public final class DeathChestCommand implements CommandExecutor {
             plugin.messages().send(sender, "no-permission");
             return true;
         }
-        Optional<DeathRecord> optional = plugin.records().get(args[1]);
-        if (optional.isEmpty()) {
-            plugin.messages().send(sender, "invalid-id", Map.of("id", args[1]));
-            return true;
-        }
-        RollbackManager.RestoreOutcome outcome = plugin.rollback().restore(sender, optional.get(), part, force);
-        plugin.messages().send(sender, outcome.messageKey(), Map.of("id", optional.get().getRecordId(), "parts", outcome.parts()));
-        if (force && outcome.success()) {
-            plugin.messages().send(sender, "restore-force-warn");
-        }
-        if (outcome.expSkippedOffline()) {
-            plugin.messages().send(sender, "restore-player-offline-exp");
-        }
-        if (outcome.usedRecovery()) {
-            Player online = Bukkit.getPlayer(optional.get().getPlayerUuid());
-            if (online == null) {
-                plugin.messages().send(sender, "restore-offline");
-            }
+        RollbackManager.RestoreOutcome outcome = plugin.rollback().restore(sender, target, optional.get(), part, force);
+        Map<String, String> messageValues = Map.of(
+                "id", optional.get().getRecordId(),
+                "parts", outcome.parts(),
+                "player", target.getName()
+        );
+        plugin.messages().send(sender, outcome.messageKey(), messageValues);
+        if (sender != target && (outcome.success()
+                || outcome.messageKey().equals("restore-inventory-full")
+                || outcome.messageKey().equals("restore-snapshot-too-large"))) {
+            plugin.messages().send(target, outcome.messageKey(), messageValues);
         }
         return true;
     }
@@ -397,8 +404,8 @@ public final class DeathChestCommand implements CommandExecutor {
         if (!hasAny(sender, "deathchest.record")) {
             return true;
         }
-        if (args.length < 2 || !args[1].equalsIgnoreCase("stats")) {
-            plugin.messages().sendHelp(sender);
+        if (args.length != 1) {
+            plugin.messages().send(sender, "unknown-command");
             return true;
         }
         plugin.messages().send(sender, "stats-header");
@@ -415,6 +422,12 @@ public final class DeathChestCommand implements CommandExecutor {
             plugin.records().get(gui.recordId()).ifPresent(record -> openItems(player, record, gui.page() - 1));
         } else if (slot == 53 && gui.page() < gui.pages()) {
             plugin.records().get(gui.recordId()).ifPresent(record -> openItems(player, record, gui.page() + 1));
+        } else {
+            String restore = gui.restoreCommand(slot);
+            if (restore != null) {
+                player.closeInventory();
+                player.performCommand(restore);
+            }
         }
     }
 

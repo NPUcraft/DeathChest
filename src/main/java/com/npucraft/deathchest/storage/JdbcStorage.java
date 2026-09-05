@@ -326,6 +326,20 @@ public final class JdbcStorage implements PluginStorage {
     }
 
     @Override
+    public Optional<DeathRecord> loadRecordByChestId(String chestId) {
+        synchronized (lock) {
+            try (PreparedStatement statement = conn().prepareStatement(
+                    "SELECT * FROM death_records WHERE death_chest_id=? ORDER BY death_time DESC LIMIT 1")) {
+                statement.setString(1, chestId);
+                List<DeathRecord> records = readRecords(statement.executeQuery());
+                return records.isEmpty() ? Optional.empty() : Optional.of(records.getFirst());
+            } catch (SQLException exception) {
+                throw failed("Failed to load death record by chest id", exception);
+            }
+        }
+    }
+
+    @Override
     public List<DeathRecord> loadRecords(UUID player, int limit) {
         synchronized (lock) {
             try (PreparedStatement statement = conn().prepareStatement("SELECT * FROM death_records WHERE player_uuid=? ORDER BY death_time DESC LIMIT ?")) {

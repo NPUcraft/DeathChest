@@ -32,11 +32,9 @@ public final class DeathChestTabCompleter implements TabCompleter {
             addIfPermitted(sender, suggestions, "on", "deathchest.toggle");
             addIfPermitted(sender, suggestions, "off", "deathchest.toggle");
             addIfPermitted(sender, suggestions, "status", "deathchest.status");
-            addIfPermitted(sender, suggestions, "list", "deathchest.list");
             addIfPermitted(sender, suggestions, "info", "deathchest.info");
             addIfPermitted(sender, suggestions, "unlock", "deathchest.unlock");
             addIfPermitted(sender, suggestions, "reload", "deathchest.reload");
-            addIfPermitted(sender, suggestions, "history", "deathchest.history");
             addIfPermitted(sender, suggestions, "tp", "deathchest.teleport");
             addIfPermitted(sender, suggestions, "restore", "deathchest.restore");
             addIfPermitted(sender, suggestions, "records", "deathchest.record");
@@ -45,21 +43,24 @@ public final class DeathChestTabCompleter implements TabCompleter {
         String sub = args[0].toLowerCase(Locale.ROOT);
         if (args.length == 2) {
             return switch (sub) {
-                case "list", "history" -> players(args[1]);
-                case "info", "unlock", "tp" -> chestIds(sender, args[1]);
-                case "restore" -> recordIds(sender, args[1]);
-                case "records" -> partial(args[1], List.of("stats"));
+                case "info" -> infoTargets(sender, args[1]);
+                case "unlock", "tp" -> chestIds(sender, args[1]);
+                case "restore" -> players(args[1]);
                 default -> List.of();
             };
         }
         if (args.length == 3) {
             return switch (sub) {
-                case "restore" -> partial(args[2], List.of("all", "items", "exp", "--force"));
+                case "info" -> partial(args[2], List.of("all", "activate", "inactive"));
+                case "restore" -> recordIds(args[1], args[2]);
                 default -> List.of();
             };
         }
         if (args.length == 4 && sub.equals("restore")) {
-            return partial(args[3], List.of("--force"));
+            return partial(args[3], List.of("all", "item", "exp", "--force"));
+        }
+        if (args.length == 5 && sub.equals("restore")) {
+            return partial(args[4], List.of("--force"));
         }
         return List.of();
     }
@@ -77,7 +78,7 @@ public final class DeathChestTabCompleter implements TabCompleter {
     private List<String> chestIds(CommandSender sender, String token) {
         List<String> ids = new ArrayList<>();
         if (sender instanceof Player player && !player.hasPermission("deathchest.admin")
-                && !player.hasPermission("deathchest.list.others")) {
+                && !player.hasPermission("deathchest.unlock.others")) {
             plugin.chests().byOwner(player.getUniqueId()).forEach(chest -> ids.add(chest.getId()));
         } else {
             for (DeathChestData chest : plugin.chests().all()) {
@@ -87,18 +88,24 @@ public final class DeathChestTabCompleter implements TabCompleter {
         return partial(token, ids);
     }
 
-    private List<String> recordIds(CommandSender sender, String token) {
-        Set<String> ids = new LinkedHashSet<>();
-        if (plugin.chests() != null) {
-            for (DeathChestData chest : plugin.chests().all()) {
-                if (chest.getRecordId() != null) {
-                    ids.add(chest.getRecordId());
-                }
-            }
+    private List<String> infoTargets(CommandSender sender, String token) {
+        List<String> options = new ArrayList<>(List.of("all", "activate", "inactive"));
+        if (sender.hasPermission("deathchest.info.others") || sender.hasPermission("deathchest.admin")) {
+            options.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
         }
-        if (sender instanceof Player player) {
-            for (DeathRecord record : plugin.records().history(player.getUniqueId(), 20)) {
+        return partial(token, options);
+    }
+
+    private List<String> recordIds(String playerName, String token) {
+        Set<String> ids = new LinkedHashSet<>();
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player != null) {
+            int limit = plugin.settings().maxRecordsPerPlayer > 0 ? plugin.settings().maxRecordsPerPlayer : 1000;
+            for (DeathRecord record : plugin.records().history(player.getUniqueId(), limit)) {
                 ids.add(record.getRecordId());
+                if (record.getDeathChestId() != null) {
+                    ids.add(record.getDeathChestId());
+                }
             }
         }
         return partial(token, new ArrayList<>(ids));

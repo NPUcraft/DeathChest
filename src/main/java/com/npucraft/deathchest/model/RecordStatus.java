@@ -4,6 +4,7 @@ public enum RecordStatus {
     PREPARED,
     CHEST_CREATED,
     COMMITTED,
+    RETRIEVED,
     NORMAL_DROP,
     FAILED,
     ROLLED_BACK,

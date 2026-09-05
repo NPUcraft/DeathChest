@@ -26,12 +26,12 @@ permissions:
   deathchest.toggle:
     description: Enable or disable personal death chests
     default: true
-  deathchest.list:
-    description: List own active death chests
-    default: true
   deathchest.info:
     description: View death chest details and read-only drop snapshot
     default: true
+  deathchest.info.others:
+    description: View other players' death chest history
+    default: op
   deathchest.unlock:
     description: Immediately make own death chest public
     default: true
@@ -51,10 +51,8 @@ permissions:
       deathchest.reload: true
       deathchest.bypass: true
       deathchest.break.bypass: true
-      deathchest.list.others: true
+      deathchest.info.others: true
       deathchest.unlock.others: true
-      deathchest.history: true
-      deathchest.history.others: true
       deathchest.record: true
       deathchest.teleport: true
       deathchest.restore: true
@@ -68,12 +66,6 @@ permissions:
     default: op
   deathchest.break.bypass:
     description: Bypass death chest break protection
-    default: op
-  deathchest.list.others:
-    default: op
-  deathchest.history:
-    default: op
-  deathchest.history.others:
     default: op
   deathchest.record:
     description: View death record statistics

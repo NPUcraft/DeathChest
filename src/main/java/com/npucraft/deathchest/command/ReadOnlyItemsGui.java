@@ -1,5 +1,6 @@
 package com.npucraft.deathchest.command;
 
+import com.npucraft.deathchest.config.MessageManager;
 import com.npucraft.deathchest.model.DeathRecord;
 import com.npucraft.deathchest.util.ItemStacks;
 import com.npucraft.deathchest.util.Texts;
@@ -18,10 +19,14 @@ public final class ReadOnlyItemsGui implements InventoryHolder {
     private final String recordId;
     private final int page;
     private final int pages;
+    private final String ownerName;
+    private final boolean adminControls;
 
-    public ReadOnlyItemsGui(DeathRecord record, int page, Component title, String prevLabel, String nextLabel,
-                            String readonlyHint) {
+    public ReadOnlyItemsGui(DeathRecord record, int page, Component title, MessageManager messages,
+                            boolean adminControls) {
         this.recordId = record.getRecordId();
+        this.ownerName = record.getPlayerName();
+        this.adminControls = adminControls;
         List<ItemStack> items = ItemStacks.deepCopy(record.getItems());
         this.pages = Math.max(1, (int) Math.ceil(items.size() / 45.0D));
         this.page = Math.max(1, Math.min(page, pages));
@@ -31,11 +36,19 @@ public final class ReadOnlyItemsGui implements InventoryHolder {
             inventory.setItem(i, items.get(start + i).clone());
         }
         if (this.page > 1) {
-            inventory.setItem(45, nav(Material.ARROW, prevLabel));
+            inventory.setItem(45, nav(Material.ARROW, messages.raw("gui-prev-page", "上一页")));
         }
-        inventory.setItem(49, nav(Material.BARRIER, readonlyHint));
+        if (adminControls) {
+            inventory.setItem(46, nav(Material.CHEST, messages.raw("gui-restore-item", "增量恢复物品")));
+            inventory.setItem(47, nav(Material.EXPERIENCE_BOTTLE, messages.raw("gui-restore-exp", "恢复经验")));
+            inventory.setItem(48, nav(Material.EMERALD, messages.raw("gui-restore-all", "增量恢复全部")));
+            inventory.setItem(50, nav(Material.TNT, messages.raw("gui-force-item", "强制覆盖物品")));
+            inventory.setItem(51, nav(Material.TNT, messages.raw("gui-force-exp", "强制恢复经验")));
+            inventory.setItem(52, nav(Material.REDSTONE_BLOCK, messages.raw("gui-force-all", "强制覆盖全部")));
+        }
+        inventory.setItem(49, nav(Material.BARRIER, messages.raw("gui-readonly-hint", "只读预览，无法取出物品")));
         if (this.page < this.pages) {
-            inventory.setItem(53, nav(Material.ARROW, nextLabel));
+            inventory.setItem(53, nav(Material.ARROW, messages.raw("gui-next-page", "下一页")));
         }
     }
 
@@ -64,5 +77,21 @@ public final class ReadOnlyItemsGui implements InventoryHolder {
 
     public int pages() {
         return pages;
+    }
+
+    public String restoreCommand(int slot) {
+        if (!adminControls) {
+            return null;
+        }
+        String suffix = switch (slot) {
+            case 46 -> " item";
+            case 47 -> " exp";
+            case 48 -> " all";
+            case 50 -> " item --force";
+            case 51 -> " exp --force";
+            case 52 -> " all --force";
+            default -> null;
+        };
+        return suffix == null ? null : "deathchest restore " + ownerName + " " + recordId + suffix;
     }
 }

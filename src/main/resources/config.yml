@@ -208,19 +208,16 @@ rollback:
   # 是否允许 /deathchest restore
   enabled: true
   # 是否允许 --force。仍需要 deathchest.restore.force 权限
-  # --force 只会发还箱子里剩下的物品或恢复仓库里的物品；箱子还在时不会再发一整份快照
-  # 从未创建死亡箱（原版掉落）时，--force 也不会补发物品
+  # 恢复 item 或 all 时，--force 会清空目标玩家当前背包、装备和副手，再覆盖为死亡快照
+  # 仅恢复 exp 时，--force 不会修改玩家物品
   allow-force: true
   # 是否允许回滚物品
   restore-items: true
   # 是否允许回滚经验（恢复到死亡前的总经验）
   restore-experience: true
-  # 管理员恢复物品是否使用恢复仓库作为断电安全的中转层
-  # false 时禁止管理员恢复物品；仅恢复经验不受影响
-  use-recovery-storage: true
 
 recovery-storage:
-  # 找不到位置、敲碎箱子、回滚背包满时，把物品暂存于此
+  # 找不到位置、敲碎箱子或取回中断时，把物品暂存于此
   enabled: true
   # 超过这个天数未领取则删除。默认 30 天。按现实时间计算，不受 protection.timer-mode 影响
   expire-days: 30
@@ -259,7 +256,7 @@ placeholder:
   enabled: true
 
 time:
-  # 记录、/info、/history 里的时间格式
+  # 记录和 /info 里的时间格式
   date-format: "yyyy年MM月dd日 HH时mm分ss秒"
   # 时区，默认北京时间 Asia/Shanghai
   timezone: Asia/Shanghai

@@ -104,7 +104,6 @@ public final class PluginSettings {
     public final boolean allowForce;
     public final boolean restoreItems;
     public final boolean restoreExperience;
-    public final boolean useRecoveryStorage;
 
     public final boolean recoveryEnabled;
     public final int recoveryExpireDays;
@@ -215,7 +214,6 @@ public final class PluginSettings {
         this.allowForce = config.getBoolean("rollback.allow-force", true);
         this.restoreItems = config.getBoolean("rollback.restore-items", true);
         this.restoreExperience = config.getBoolean("rollback.restore-experience", true);
-        this.useRecoveryStorage = config.getBoolean("rollback.use-recovery-storage", true);
 
         this.recoveryEnabled = config.getBoolean("recovery-storage.enabled", true);
         this.recoveryExpireDays = Math.max(1, config.getInt("recovery-storage.expire-days", 30));

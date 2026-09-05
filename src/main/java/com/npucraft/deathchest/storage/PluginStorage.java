@@ -38,6 +38,8 @@ public interface PluginStorage {
 
     Optional<DeathRecord> loadRecord(String recordId);
 
+    Optional<DeathRecord> loadRecordByChestId(String chestId);
+
     List<DeathRecord> loadRecords(UUID player, int limit);
 
     List<DeathRecord> loadInterruptedRecords();

@@ -20,10 +20,10 @@
 - Residence 可选区域权限检查。
 - TextDisplay 动态全息和 PlaceholderAPI 可选变量。
 - 潜行右键快速取回、空装备槽自动穿戴、背包不足时保留剩余物品。
-- 完整死亡快照、只读物品 GUI、管理员 SAFE / Force Restore。
+- 完整死亡快照、可点击只读物品 GUI、管理员增量 / Force Restore。
 - 玩家可用 `/dc on`、`/dc off` 持久化控制个人死亡箱，默认开启。
 - 可读实体箱 ID：`DC-玩家名-yyyyMMdd-HHmmss-SSS`；同次死亡的额外箱追加 `-P2`、`-P3`。
-- 可读死亡记录 ID：`DR-玩家名-yyyyMMdd-HHmmss-SSS`；同一毫秒发生冲突时追加 `-N2`。旧数据库中已经存在的随机 ID 保持原值。
+- 可读死亡记录 ID：`DR-玩家名-yyyyMMdd-HHmmss-SSS`；同一毫秒发生冲突时追加 `-N2`。
 - SQLite 和 MySQL 存储、恢复仓库、审计数据库及控制台行为日志。
 - 致命伤害时自动使用背包内的不死图腾。
 
@@ -203,7 +203,7 @@ Residence 检查可分别启用 `build`、`place`、`container`。双箱两个�
 
 ## 玩家命令
 
-主命令别名为 `/dc`。以下 `<id>` 均为活动 DeathChest ID：
+主命令别名为 `/dc`。
 
 `/deathchest help` 对普通玩家仅显示下列基础命令；只有拥有 `deathchest.admin` 的管理员才会看到管理员命令区块。
 
@@ -212,52 +212,52 @@ Residence 检查可分别启用 `build`、`place`、`container`。双箱两个�
 | `/deathchest help` | 无专用权限 | 查看帮助 |
 | `/deathchest on`、`/deathchest off` | `deathchest.toggle` | 开启或关闭个人死亡箱 |
 | `/deathchest status` | `deathchest.status` | 查看功能状态、活动箱数量和最近位置 |
-| `/deathchest list` | `deathchest.list` | 查看自己的活动死亡箱 |
-| `/deathchest info <id>` | `deathchest.info` | 查看自己的箱子信息并打开只读掉落快照 GUI |
+| `/deathchest info` | `deathchest.info` | 预览自己最近一次死亡箱快照 |
+| `/deathchest info all` | `deathchest.info` | 列出自己的全部死亡箱记录 |
+| `/deathchest info activate` | `deathchest.info` | 列出自己的活动死亡箱 |
+| `/deathchest info inactive` | `deathchest.info` | 列出自己的已提取/已恢复死亡箱 |
 | `/deathchest unlock <id>` | `deathchest.unlock` | 立即公开自己的死亡箱 |
 
-普通玩家不能通过 `/info` 查看他人的快照，除非额外拥有 `deathchest.list.others`。箱子过期并从活动记录移除后，不能再通过 `/info` 打开。
+带筛选参数的 `/info` 会输出可点击列表；点击条目打开只读物品 GUI。普通玩家只能查看自己的记录，不能借助隐藏的点击命令查看其他玩家快照。
 
 项目没有 `/public`、`/retrieve`、`/recover`、`/remove`、`/record` 命令。玩家首次状态由 `player-settings.default-enabled` 决定；允许切换时，`/dc on|off` 的选择会持久化到 SQLite/MySQL。
 
 ## 管理员命令
 
-`restore` 使用 DeathRecord ID，可从 `/deathchest history` 获得：
+管理员可以从 `/dc info <玩家> [all|activate|inactive]` 的可点击列表进入预览 GUI，并通过 GUI 底部按钮执行增量恢复或 Force 覆盖。
 
 | 命令 | 主要权限 | 说明 |
 | --- | --- | --- |
 | `/deathchest reload` | `deathchest.reload` | 重载配置、消息、经济和集成，不重连数据库 |
-| `/deathchest list <玩家>` | `deathchest.list.others` | 查看他人活动死亡箱 |
-| `/deathchest history [玩家]` | `deathchest.history`、`history.others` | 查看最近 15 条死亡记录 |
+| `/deathchest info <玩家> [all\|activate\|inactive]` | `deathchest.info.others` | 查看并预览指定玩家的死亡箱记录 |
 | `/deathchest tp <id>` | `deathchest.teleport` | 传送到活动死亡箱 |
 | `/deathchest unlock <id>` | `deathchest.unlock`、`unlock.others` | 立即公开任意死亡箱 |
-| `/deathchest restore <recordId> [all\|items\|exp] [--force]` | `deathchest.restore` | 回滚物品和/或经验，默认 `all` |
-| `/deathchest records stats` | `deathchest.record` | 查看记录、活动箱和恢复仓库数量 |
+| `/deathchest restore <玩家> <id> [all\|item\|exp] [--force]` | `deathchest.restore` | 恢复指定玩家的死亡快照，默认 `all` |
+| `/deathchest records` | `deathchest.record` | 查看记录、活动箱和恢复仓库数量 |
 
 恢复经验（包括 `restore ... all`）额外需要 `deathchest.restore.exp`。`--force` 还需要配置允许并拥有 `deathchest.restore.force`。
 
-## SAFE Restore 与 Force Restore
+## 增量 Restore 与 Force Restore
 
 DeathChest 和 DeathRecord 相互独立。玩家正常领取物品不会修改原始死亡快照。
 
-SAFE Restore 会在以下情况拒绝恢复物品：
+未指定 `--force` 时采用增量恢复：
 
-- 当前箱内物品与原始快照不一致。
-- 关联实体箱已经不存在。
-- 物品已经处于恢复仓库。
-- 当时没有创建实体死亡箱。
-- 记录没有物品快照。
+- 先复制玩家当前存储背包，在内存中模拟堆叠和放入空格。
+- 只有完整死亡快照能够一次性装入时才提交。
+- 空间不足时不会添加任何物品，并提示玩家清理背包。
+- 不覆盖当前装备、副手或已有背包物品。
 
-Force Restore 用于管理员明确接受箱内状态已经变化的情况，但仍遵循防复制边界：
+恢复 `item` 或 `all` 并指定 `--force` 时采用覆盖恢复；`exp --force` 只允许重复恢复经验，不会修改背包：
 
-- 箱子仍存在时，只转移箱内当前剩余物品，不重新生成完整快照。
-- 物品已经在恢复仓库时，不再生成第二份。
-- 当时走原版掉落时，不允许凭历史快照再次发放。
-- 已完成的物品或经验部分不能重复恢复，`--force` 也不能绕过。
+- 清空目标玩家的存储背包、装备栏和副手。
+- 将死亡快照写入空背包；可穿戴物优先进入对应空装备槽。
+- 即使清空后仍无法完整容纳时拒绝操作，不产生部分恢复。
+- Force 可以再次覆盖已经恢复过的记录，并输出控制台 WARN 和审计记录。
 
-物品恢复要求同时启用 `rollback.use-recovery-storage` 和 `recovery-storage.enabled`。恢复流程先锁定箱子，将物品写入具有固定 ID 的恢复条目，再删除实体箱并持久化 DeathRecord 的独立物品/经验完成状态。服务器在任一步骤中断后，启动时会自动协调未完成的箱子转移和管理员恢复。
+恢复物品前会锁定并移除关联的活动实体箱，避免箱内物品与恢复物同时存在。恢复状态在修改玩家背包前预先持久化；若服务器在恢复中断电，启动时会保守关闭未完成事务并阻止普通增量重复发放，管理员检查玩家背包后可明确使用 `--force` 重新覆盖。
 
-经验恢复为“设置到死亡前总经验”，不是增加相同经验值。玩家必须在线才能恢复经验；`restore all` 遇到离线玩家会安全跳过经验，之后管理员可以单独执行 `restore <id> exp`。
+经验恢复为“设置到死亡前总经验”，不是增加相同经验值。所有恢复模式都要求目标玩家在线。
 
 ## 权限
 
@@ -268,17 +268,14 @@ Force Restore 用于管理员明确接受箱内状态已经变化的情况，但
 | `deathchest.use` | true | 允许插件处理该玩家死亡 |
 | `deathchest.status` | true | 查看个人状态 |
 | `deathchest.toggle` | true | 开启或关闭个人死亡箱 |
-| `deathchest.list` | true | 查看自己的活动箱 |
 | `deathchest.info` | true | 查看自己的箱子和只读快照 |
+| `deathchest.info.others` | OP | 查看其他玩家的死亡箱记录和快照 |
 | `deathchest.unlock` | true | 公开自己的箱子 |
 | `deathchest.retrieve` | true | 使用快速取回 |
 | `deathchest.retrieve.bypass` | OP | 快速取回他人箱子 |
 | `deathchest.bypass` | OP | 绕过私人打开限制 |
 | `deathchest.break.bypass` | OP | 绕过破坏权限限制 |
-| `deathchest.list.others` | OP | 查看他人箱子及 `/info` |
 | `deathchest.unlock.others` | OP | 公开他人箱子 |
-| `deathchest.history` | OP | 使用死亡历史命令 |
-| `deathchest.history.others` | OP | 查看他人历史 |
 | `deathchest.record` | OP | 查看记录统计 |
 | `deathchest.teleport` | OP | 传送到死亡箱 |
 | `deathchest.reload` | OP | 重载插件配置 |

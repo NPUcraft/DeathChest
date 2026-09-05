@@ -532,6 +532,7 @@ public final class DeathChestManager {
             DeathChestData chest = current.get();
             if (existsInWorld(chest) && currentItems(chest).isEmpty()) {
                 plugin.audit().chest(chest, "因空箱自动移除", "");
+                updateRecordStatus(chest, com.npucraft.deathchest.model.RecordStatus.RETRIEVED);
                 removeAndStoreRemaining(chest, false);
             }
         }, delay);
@@ -551,6 +552,7 @@ public final class DeathChestManager {
         if (drop) {
             dropItems(data, items);
         }
+        updateRecordStatus(data, com.npucraft.deathchest.model.RecordStatus.EXPIRED);
         destroySilently(data);
         plugin.audit().log(AuditEventType.CHEST_EXPIRED, null, "DeathChest", data.getOwnerUuid(), data.getOwnerName(),
                 data.getId(), data.getRecordId(), plugin.settings().expireMode.name(), false);
@@ -563,6 +565,21 @@ public final class DeathChestManager {
                     "y", String.valueOf(data.getY()),
                     "z", String.valueOf(data.getZ())
             ));
+        }
+    }
+
+    private void updateRecordStatus(DeathChestData chest, com.npucraft.deathchest.model.RecordStatus status) {
+        if (chest.getRecordId() == null) {
+            return;
+        }
+        try {
+            plugin.records().get(chest.getRecordId()).ifPresent(record -> {
+                record.setStatus(status);
+                plugin.records().save(record);
+            });
+        } catch (RuntimeException exception) {
+            plugin.getLogger().warning("Failed to update death record status for " + chest.getId() + ": "
+                    + exception.getMessage());
         }
     }
 
