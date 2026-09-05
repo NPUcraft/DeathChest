@@ -19,9 +19,14 @@ public final class ProtectionManager {
 
     public void hook() {
         integrations.clear();
-        ResidenceIntegration residence = new ResidenceIntegration(plugin);
-        if (residence.isAvailable()) {
-            integrations.add(residence);
+        try {
+            ResidenceIntegration residence = new ResidenceIntegration(plugin);
+            if (residence.isAvailable()) {
+                integrations.add(residence);
+            }
+        } catch (LinkageError | RuntimeException exception) {
+            plugin.getLogger().warning("Residence integration could not be loaded and will be skipped: "
+                    + exception.getClass().getSimpleName() + ": " + exception.getMessage());
         }
     }
 

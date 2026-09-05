@@ -59,6 +59,9 @@ public final class ResidenceIntegration implements ProtectionIntegration {
             }
         } catch (ClassNotFoundException ignored) {
             plugin.getLogger().warning("Residence plugin is present but API classes were not found.");
+        } catch (LinkageError error) {
+            plugin.getLogger().warning("Residence API has a missing optional dependency ("
+                    + error.getClass().getSimpleName() + "). Skipping Residence checks: " + error.getMessage());
         } catch (Exception exception) {
             plugin.getLogger().warning("Failed to hook Residence: " + exception.getMessage());
         }
@@ -107,7 +110,7 @@ public final class ResidenceIntegration implements ProtectionIntegration {
                 return false;
             }
             return true;
-        } catch (Exception exception) {
+        } catch (Exception | LinkageError exception) {
             plugin.debug("Residence check failed: " + exception.getMessage());
             return true;
         }
@@ -176,7 +179,7 @@ public final class ResidenceIntegration implements ProtectionIntegration {
     private static Class<?> tryLoad(String name) {
         try {
             return Class.forName(name);
-        } catch (ClassNotFoundException ignored) {
+        } catch (ClassNotFoundException | LinkageError | SecurityException ignored) {
             return null;
         }
     }
@@ -184,7 +187,7 @@ public final class ResidenceIntegration implements ProtectionIntegration {
     private static Method findMethod(Class<?> type, String name, Class<?>... params) {
         try {
             return type.getMethod(name, params);
-        } catch (NoSuchMethodException ignored) {
+        } catch (NoSuchMethodException | LinkageError | SecurityException ignored) {
             return null;
         }
     }

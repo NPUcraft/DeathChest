@@ -16,8 +16,18 @@ public final class EconomyManager {
     }
 
     public void hook() {
+        this.provider = new NoEconomyProvider();
+        try {
+            hookConfiguredProvider();
+        } catch (LinkageError | RuntimeException exception) {
+            plugin.getLogger().severe("Configured economy integration could not be loaded: "
+                    + exception.getClass().getSimpleName() + ": " + exception.getMessage()
+                    + ". Death chests will not be created while economy charging is required.");
+        }
+    }
+
+    private void hookConfiguredProvider() {
         if (!plugin.settings().economyEnabled || plugin.settings().economyProvider == EconomyProviderType.NONE) {
-            this.provider = new NoEconomyProvider();
             plugin.getLogger().info("Economy is disabled. Death chests will be created without charging.");
             return;
         }
