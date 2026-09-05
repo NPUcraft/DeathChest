@@ -13,9 +13,9 @@ public final class TimeFormats {
         DateTimeFormatter formatter;
         try {
             formatter = DateTimeFormatter.ofPattern(pattern == null || pattern.isBlank()
-                    ? "yyyy年MM月dd日 HH时mm分ss秒" : pattern);
+                    ? "yyyy-MM-dd HH:mm:ss" : pattern);
         } catch (IllegalArgumentException exception) {
-            formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH时mm分ss秒");
+            formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         }
         ZoneId zone = ZoneId.of("Asia/Shanghai");
         if (timezone != null && !timezone.isBlank()) {

@@ -30,7 +30,7 @@ class TimeFormatsTest {
     @Test
     void formatsAbsoluteTimeInConfiguredTimezone() {
         String formatted = TimeFormats.formatInstant(Instant.parse("2026-09-05T07:00:01Z").toEpochMilli(),
-                TimeFormats.formatter("yyyy年MM月dd日 HH时mm分ss秒", "Asia/Shanghai"));
-        assertEquals("2026年09月05日 15时00分01秒", formatted);
+                TimeFormats.formatter("yyyy-MM-dd HH:mm:ss", "Asia/Shanghai"));
+        assertEquals("2026-09-05 15:00:01", formatted);
     }
 }

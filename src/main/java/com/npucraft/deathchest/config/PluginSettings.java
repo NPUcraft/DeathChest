@@ -148,7 +148,7 @@ public final class PluginSettings {
         this.inventoryPriceMode = enumValue(config.getString("price.inventory.mode"), InventoryPriceMode.OCCUPIED_SLOTS, InventoryPriceMode.class);
         this.pricePerSlot = config.getDouble("price.inventory.price-per-slot", 20.0D);
         this.minPrice = config.getDouble("price.minimum", 0.0D);
-        this.maxPrice = config.getDouble("price.maximum", 3000.0D);
+        this.maxPrice = config.getDouble("price.maximum", 1200.0D);
         this.rounding = enumValue(config.getString("price.rounding"), RoundingMode.ROUND, RoundingMode.class);
 
         this.experienceEnabled = config.getBoolean("experience.enabled", true);
@@ -235,7 +235,7 @@ public final class PluginSettings {
         this.mysqlJdbcUrl = config.getString("storage.mysql.jdbc-url", "");
         this.placeholderEnabled = config.getBoolean("placeholder.enabled", true);
 
-        this.dateFormat = config.getString("time.date-format", "yyyy年MM月dd日 HH时mm分ss秒");
+        this.dateFormat = config.getString("time.date-format", "yyyy-MM-dd HH:mm:ss");
         this.timezone = config.getString("time.timezone", "Asia/Shanghai");
     }
 
