@@ -1,5 +1,7 @@
 # DeathChest
 
+[![Build](https://github.com/NPUcraft/DeathChest/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/NPUcraft/DeathChest/actions/workflows/build.yml)
+
 面向 Paper 1.21.8 的安全死亡箱插件。玩家死亡后，插件以 `PlayerDeathEvent#getDrops()` 为唯一物品来源，根据配置计算费用并保存实际掉落物。死亡箱默认先私人保护 12 小时，再公开 3 天，最后按配置掉落或删除剩余物品。
 
 项目主页：[npucraft.com](https://npucraft.com)
