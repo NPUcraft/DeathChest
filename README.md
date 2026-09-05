@@ -21,7 +21,8 @@
 - TextDisplay 动态全息和 PlaceholderAPI 可选变量。
 - 潜行右键快速取回、空装备槽自动穿戴、背包不足时保留剩余物品。
 - 完整死亡快照、只读物品 GUI、管理员 SAFE / Force Restore。
-- 可读死亡箱 ID：`DC-玩家名-yyyyMMdd-HHmmss-SSS`；同次死亡的额外箱追加 `-P2`、`-P3`。
+- 可读实体箱 ID：`DC-玩家名-yyyyMMdd-HHmmss-SSS`；同次死亡的额外箱追加 `-P2`、`-P3`。
+- 可读死亡记录 ID：`DR-玩家名-yyyyMMdd-HHmmss-SSS`；同一毫秒发生冲突时追加 `-N2`。旧数据库中已经存在的随机 ID 保持原值。
 - SQLite 和 MySQL 存储、恢复仓库、审计数据库及控制台行为日志。
 - 致命伤害时自动使用背包内的不死图腾。
 
@@ -202,6 +203,8 @@ Residence 检查可分别启用 `build`、`place`、`container`。双箱两个�
 ## 玩家命令
 
 主命令别名为 `/dc`。以下 `<id>` 均为活动 DeathChest ID：
+
+`/deathchest help` 对普通玩家仅显示下列基础命令；只有拥有 `deathchest.admin` 的管理员才会看到管理员命令区块。
 
 | 命令 | 权限 | 说明 |
 | --- | --- | --- |

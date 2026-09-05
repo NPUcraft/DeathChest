@@ -21,11 +21,12 @@ public final class DeathRecordManager {
     }
 
     public DeathRecord createPrepared(Player player, PlayerDeathEvent event, List<ItemStack> snapshot) {
+        long deathTime = System.currentTimeMillis();
         DeathRecord record = new DeathRecord();
-        record.setRecordId(plugin.nextRecordId());
+        record.setRecordId(plugin.nextRecordId(player.getName(), deathTime));
         record.setPlayerUuid(player.getUniqueId());
         record.setPlayerName(player.getName());
-        record.setDeathTime(System.currentTimeMillis());
+        record.setDeathTime(deathTime);
         if (player.getWorld() != null) {
             record.setWorld(player.getWorld().getName());
         }

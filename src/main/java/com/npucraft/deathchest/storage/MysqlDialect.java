@@ -44,7 +44,7 @@ public final class MysqlDialect extends SqlDialect {
         execute(connection, """
                 CREATE TABLE IF NOT EXISTS death_chests (
                     id VARCHAR(96) NOT NULL PRIMARY KEY,
-                    record_id VARCHAR(32),
+                    record_id VARCHAR(96),
                     owner_uuid VARCHAR(36) NOT NULL,
                     owner_name VARCHAR(64) NOT NULL,
                     world VARCHAR(64) NOT NULL,
@@ -69,7 +69,7 @@ public final class MysqlDialect extends SqlDialect {
                 """);
         execute(connection, """
                 CREATE TABLE IF NOT EXISTS death_records (
-                    id VARCHAR(32) NOT NULL PRIMARY KEY,
+                    id VARCHAR(96) NOT NULL PRIMARY KEY,
                     player_uuid VARCHAR(36) NOT NULL,
                     player_name VARCHAR(64) NOT NULL,
                     death_time BIGINT NOT NULL,
@@ -118,7 +118,7 @@ public final class MysqlDialect extends SqlDialect {
                 CREATE TABLE IF NOT EXISTS recovery_storage (
                     id VARCHAR(128) NOT NULL PRIMARY KEY,
                     player_uuid VARCHAR(36) NOT NULL,
-                    record_id VARCHAR(32),
+                    record_id VARCHAR(96),
                     items LONGBLOB,
                     created_at BIGINT NOT NULL,
                     expire_at BIGINT NOT NULL
@@ -134,7 +134,7 @@ public final class MysqlDialect extends SqlDialect {
                     target_uuid VARCHAR(36),
                     target_name VARCHAR(64),
                     death_chest_id VARCHAR(96),
-                    record_id VARCHAR(32),
+                    record_id VARCHAR(96),
                     details TEXT,
                     `force` TINYINT NOT NULL
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -149,9 +149,13 @@ public final class MysqlDialect extends SqlDialect {
         addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN items_restored TINYINT NOT NULL DEFAULT 0");
         addColumnIfAbsent(connection, "ALTER TABLE death_records ADD COLUMN experience_restored TINYINT NOT NULL DEFAULT 0");
         execute(connection, "ALTER TABLE death_chests MODIFY COLUMN id VARCHAR(96) NOT NULL");
+        execute(connection, "ALTER TABLE death_chests MODIFY COLUMN record_id VARCHAR(96)");
+        execute(connection, "ALTER TABLE death_records MODIFY COLUMN id VARCHAR(96) NOT NULL");
         execute(connection, "ALTER TABLE death_records MODIFY COLUMN death_chest_id VARCHAR(96)");
         execute(connection, "ALTER TABLE recovery_storage MODIFY COLUMN id VARCHAR(128) NOT NULL");
+        execute(connection, "ALTER TABLE recovery_storage MODIFY COLUMN record_id VARCHAR(96)");
         execute(connection, "ALTER TABLE audit_log MODIFY COLUMN death_chest_id VARCHAR(96)");
+        execute(connection, "ALTER TABLE audit_log MODIFY COLUMN record_id VARCHAR(96)");
         dropColumnIfPresent(connection, "death_records", "next_death_public");
         dropColumnIfPresent(connection, "death_records", "pinned");
     }

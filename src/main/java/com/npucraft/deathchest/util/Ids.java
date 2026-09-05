@@ -12,6 +12,15 @@ public final class Ids {
     }
 
     public static String chestId(String playerId, long deathTime, String timezone, int part) {
+        return readableId("DC", playerId, deathTime, timezone)
+                + (part > 1 ? "-P" + part : "");
+    }
+
+    public static String recordId(String playerId, long deathTime, String timezone) {
+        return readableId("DR", playerId, deathTime, timezone);
+    }
+
+    private static String readableId(String prefix, String playerId, long deathTime, String timezone) {
         String safePlayerId = playerId == null ? "UNKNOWN"
                 : playerId.replaceAll("[^A-Za-z0-9_]", "");
         if (safePlayerId.isBlank()) {
@@ -26,11 +35,7 @@ public final class Ids {
         String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS")
                 .withZone(zone)
                 .format(Instant.ofEpochMilli(deathTime));
-        return "DC-" + safePlayerId + "-" + timestamp + (part > 1 ? "-P" + part : "");
-    }
-
-    public static String recordId() {
-        return "DR-" + shortHex(10);
+        return prefix + "-" + safePlayerId + "-" + timestamp;
     }
 
     public static String recoveryId() {

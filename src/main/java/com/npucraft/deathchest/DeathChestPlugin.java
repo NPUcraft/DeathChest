@@ -184,11 +184,13 @@ public final class DeathChestPlugin extends JavaPlugin {
         return id;
     }
 
-    public String nextRecordId() {
-        String id;
-        do {
-            id = Ids.recordId();
-        } while (records.get(id).isPresent());
+    public String nextRecordId(String playerId, long deathTime) {
+        String base = Ids.recordId(playerId, deathTime, settings().timezone);
+        String id = base;
+        int collision = 2;
+        while (storage.loadRecord(id).isPresent()) {
+            id = base + "-N" + collision++;
+        }
         return id;
     }
 

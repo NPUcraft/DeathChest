@@ -118,10 +118,12 @@ public final class MessageManager {
             sender.sendMessage(component(player, line, Map.of(), false));
         }
         if (sender.hasPermission("deathchest.admin")) {
+            sender.sendMessage(component(player, raw("help-admin-header", ""), Map.of(), false));
             for (String line : rawList("help-admin")) {
                 sender.sendMessage(component(player, line, Map.of(), false));
             }
         }
+        sender.sendMessage(component(player, raw("help-footer", ""), Map.of(), false));
     }
 
     private File languageFile(String language) {
