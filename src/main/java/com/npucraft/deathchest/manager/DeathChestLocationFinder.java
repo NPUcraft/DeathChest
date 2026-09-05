@@ -6,6 +6,7 @@ import com.npucraft.deathchest.model.ChestPlacement;
 import com.npucraft.deathchest.model.ChestType;
 import com.npucraft.deathchest.model.LocationKey;
 import org.bukkit.Location;
+import org.bukkit.HeightMap;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.World;
@@ -55,37 +56,34 @@ public final class DeathChestLocationFinder {
         int[] checks = {0};
         int maxChecks = plugin.settings().maxBlockChecks;
 
-        for (int dy = 0; dy <= vertical; dy++) {
-            for (int sign = 0; sign < (dy == 0 ? 1 : 2); sign++) {
-                int y = originY + (sign == 0 ? dy : -dy);
-                if (y < minY || y > maxY) {
-                    continue;
-                }
-                for (int r = 0; r <= radius; r++) {
-                    ChestPlacement found = searchSquare(player, world, originX, y, originZ, r, type, occupied, checks, maxChecks);
-                    if (found != null) {
-                        return found;
-                    }
-                    if (checks[0] >= maxChecks) {
-                        return null;
-                    }
-                }
+        for (int r = 0; r <= radius; r++) {
+            ChestPlacement found = searchRing(player, world, originX, originY, originZ, r,
+                    minY, maxY, vertical, type, occupied, checks, maxChecks);
+            if (found != null) {
+                return found;
+            }
+            if (checks[0] >= maxChecks) {
+                return null;
             }
         }
         return null;
     }
 
-    private ChestPlacement searchSquare(Player player, World world, int originX, int y, int originZ, int r,
-                                        ChestType type, Predicate<LocationKey> occupied, int[] checks, int maxChecks) {
+    private ChestPlacement searchRing(Player player, World world, int originX, int originY, int originZ, int r,
+                                      int minY, int maxY, int vertical, ChestType type,
+                                      Predicate<LocationKey> occupied, int[] checks, int maxChecks) {
         if (r == 0) {
-            return tryBlock(player, world.getBlockAt(originX, y, originZ), type, occupied, checks, maxChecks);
+            return tryColumn(player, world, originX, originY, originZ, minY, maxY, vertical,
+                    type, occupied, checks, maxChecks);
         }
         for (int x = originX - r; x <= originX + r; x++) {
-            ChestPlacement north = tryBlock(player, world.getBlockAt(x, y, originZ - r), type, occupied, checks, maxChecks);
+            ChestPlacement north = tryColumn(player, world, x, originY, originZ - r, minY, maxY, vertical,
+                    type, occupied, checks, maxChecks);
             if (north != null) {
                 return north;
             }
-            ChestPlacement south = tryBlock(player, world.getBlockAt(x, y, originZ + r), type, occupied, checks, maxChecks);
+            ChestPlacement south = tryColumn(player, world, x, originY, originZ + r, minY, maxY, vertical,
+                    type, occupied, checks, maxChecks);
             if (south != null) {
                 return south;
             }
@@ -94,16 +92,62 @@ public final class DeathChestLocationFinder {
             }
         }
         for (int z = originZ - r + 1; z <= originZ + r - 1; z++) {
-            ChestPlacement west = tryBlock(player, world.getBlockAt(originX - r, y, z), type, occupied, checks, maxChecks);
+            ChestPlacement west = tryColumn(player, world, originX - r, originY, z, minY, maxY, vertical,
+                    type, occupied, checks, maxChecks);
             if (west != null) {
                 return west;
             }
-            ChestPlacement east = tryBlock(player, world.getBlockAt(originX + r, y, z), type, occupied, checks, maxChecks);
+            ChestPlacement east = tryColumn(player, world, originX + r, originY, z, minY, maxY, vertical,
+                    type, occupied, checks, maxChecks);
             if (east != null) {
                 return east;
             }
             if (checks[0] >= maxChecks) {
                 return null;
+            }
+        }
+        return null;
+    }
+
+    private ChestPlacement tryColumn(Player player, World world, int x, int originY, int z,
+                                     int minY, int maxY, int vertical, ChestType type,
+                                     Predicate<LocationKey> occupied, int[] checks, int maxChecks) {
+        ChestPlacement exact = tryBlock(player, world.getBlockAt(x, originY, z), type, occupied, checks, maxChecks);
+        if (exact != null || checks[0] >= maxChecks) {
+            return exact;
+        }
+
+        int surfaceY = Integer.MIN_VALUE;
+        if (world.getEnvironment() != World.Environment.NETHER) {
+            surfaceY = Math.min(maxY, world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1);
+            if (surfaceY != originY && Math.abs(surfaceY - originY) <= vertical) {
+                ChestPlacement surface = tryBlock(player, world.getBlockAt(x, surfaceY, z),
+                        type, occupied, checks, maxChecks);
+                if (surface != null || checks[0] >= maxChecks) {
+                    return surface;
+                }
+            }
+            if (surfaceY <= minY + 1 && world.getBlockAt(x, minY, z).getType().isAir()) {
+                return null;
+            }
+        }
+
+        for (int distance = 1; distance <= vertical; distance++) {
+            int belowY = originY - distance;
+            if (belowY >= minY && belowY != surfaceY) {
+                ChestPlacement below = tryBlock(player, world.getBlockAt(x, belowY, z),
+                        type, occupied, checks, maxChecks);
+                if (below != null || checks[0] >= maxChecks) {
+                    return below;
+                }
+            }
+            int aboveY = originY + distance;
+            if (aboveY <= maxY && aboveY != surfaceY) {
+                ChestPlacement above = tryBlock(player, world.getBlockAt(x, aboveY, z),
+                        type, occupied, checks, maxChecks);
+                if (above != null || checks[0] >= maxChecks) {
+                    return above;
+                }
             }
         }
         return null;
@@ -186,7 +230,7 @@ public final class DeathChestLocationFinder {
             return false;
         }
         Block below = block.getRelative(BlockFace.DOWN);
-        if (below.getType() == Material.LAVA || below.getType() == Material.MAGMA_BLOCK) {
+        if (!below.getType().isSolid() || DANGEROUS.contains(below.getType()) || Tag.LEAVES.isTagged(below.getType())) {
             return false;
         }
         BlockData data = block.getBlockData();

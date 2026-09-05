@@ -160,7 +160,7 @@ public final class PluginSettings {
         this.chestBlockType = chestType == Material.TRAPPED_CHEST ? Material.TRAPPED_CHEST : Material.CHEST;
 
         this.safeLocationRadius = Math.max(1, config.getInt("location.safe-location-radius", 32));
-        this.verticalSearchRadius = Math.max(1, config.getInt("location.vertical-search-radius", 64));
+        this.verticalSearchRadius = Math.max(1, config.getInt("location.vertical-search-radius", 128));
         this.maxBlockChecks = Math.max(256, config.getInt("location.max-block-checks", 12000));
         this.locationFailureMode = enumValue(config.getString("location.failure-mode"), LocationFailureMode.VIRTUAL_STORAGE, LocationFailureMode.class);
         this.allowWaterlogged = config.getBoolean("location.allow-waterlogged", true);

@@ -94,8 +94,8 @@ chest:
 location:
   # 水平搜索半径（格）。死亡点周围这么远内找可放置位置
   safe-location-radius: 32
-  # 垂直搜索半径（格）
-  vertical-search-radius: 64
+  # 垂直搜索半径（格）。高空或虚空死亡时会在该范围内寻找有安全实体支撑的陆地
+  vertical-search-radius: 128
   # 找不到安全位置时：
   #   NORMAL_DROP      不创建箱子，物品原版掉落
   #   VIRTUAL_STORAGE  写入恢复仓库，清空原版掉落；玩家上线后尝试塞回背包（仍会按 experience 处理经验）
