@@ -1,0 +1,261 @@
+# DeathChest 主配置
+# 聊天、帮助、全息文案使用 MiniMessage，例如 <red>、<white>、<gray>
+# 可用变量示例：%deathchest_owner%  %deathchest_x%  %deathchest_protection_remaining%
+# 修改后使用 /deathchest reload 重载（不会重连数据库；切换 storage.type 必须重启）
+
+# 语言文件：zh 对应 plugins/DeathChest/message_zh.yml
+language: zh
+
+general:
+  # 总开关。false 时不拦截死亡掉落、不创建死亡箱
+  # 背包图腾仍由 totem.inventory-trigger 单独控制
+  enabled: true
+  # true 时向控制台输出调试日志
+  debug: false
+
+totem:
+  # true：致命伤害时，若主手/副手没有图腾，则把背包里的图腾换到副手，从而触发原版图腾复活
+  # 与 general.enabled 无关
+  inventory-trigger: true
+
+player-settings:
+  # 全服开关：是否为玩家创建死亡箱。没有个人开关
+  # false 时仍会记录一次「未创建」的死亡记录，物品按原版掉落
+  default-enabled: true
+
+economy:
+  # false 或 provider: NONE 时不扣费，死亡箱照常创建
+  # enabled: true 且 provider 不是 NONE 时，如果 Vault/CoinsEngine 不可用，则不创建死亡箱，物品原版掉落（不会变成免费保护箱）
+  # 查询余额失败时同样原版掉落，不会按余额为 0 走不足余额模式
+  enabled: true
+  # VAULT        走 Vault 经济（需另装 EssentialsX Economy、CMI 等实现）
+  # COINSENGINE  走 CoinsEngine；2.8+ 改名为 ExcellentEconomy 也可
+  # NONE         不扣费
+  provider: VAULT
+  # 余额不足时：
+  #   NORMAL_DROP   不创建箱子，物品原版掉落
+  #   PUBLIC_CHEST  创建箱子但不扣费，且立即公开
+  #   TAKE_ALL      扣光当前余额后，仍创建受保护箱子
+  insufficient-balance-mode: NORMAL_DROP
+
+coinsengine:
+  # CoinsEngine / ExcellentEconomy 的货币 ID
+  currency: coins
+
+# 最终价格 = 基础价 + 等级价 + 背包价，再按 rounding 取整，并限制在 minimum ~ maximum
+price:
+  # 固定基础费用
+  base: 300.0
+  level:
+    # 是否按玩家当前等级加价
+    enabled: true
+    # 每级增加的费用。例如 30 级 × 10 = 300
+    price-per-level: 10.0
+  inventory:
+    # 是否按背包占用加价
+    enabled: true
+    # OCCUPIED_SLOTS  本次掉落占用的物品栈数
+    # EMPTY_SLOTS     背包空格数
+    # ITEM_AMOUNT     本次掉落物总个数
+    # DISABLED        不加背包价（与 inventory.enabled: false 相同）
+    mode: OCCUPIED_SLOTS
+    # 每个格子 / 每个物品的单价
+    price-per-slot: 10.0
+  # 最低收费。设为 0 表示可以为 0
+  minimum: 0
+  # 最高收费。默认 3000
+  maximum: 3000
+  # ROUND 四舍五入 / FLOOR 向下 / CEIL 向上
+  rounding: ROUND
+
+experience:
+  # false 时不改经验，完全交给原版
+  enabled: true
+  # VANILLA     原版掉经验
+  # KEEP_ALL    死亡后保留全部经验
+  # PERCENTAGE  按 percentage 保留，其余清零且不掉落经验球
+  # NONE        经验全部清空，不掉落经验球
+  mode: PERCENTAGE
+  # KEEP_ALL / PERCENTAGE 时生效，0~100
+  percentage: 70
+
+chest:
+  # AUTO    能装进单箱就单箱，否则双箱；仍不够可按 overflow-mode 再开箱
+  # SINGLE  只用单箱（27 格）
+  # DOUBLE  只用双箱（54 格）
+  sizing-mode: AUTO
+  # EXTRA_CHEST      一个箱子装不下就再生成额外死亡箱
+  # DROP_OVERFLOW    装不下的部分留在原版掉落里
+  # NORMAL_DROP_ALL  只要装不下，整次死亡都不创建箱子，全部原版掉落
+  overflow-mode: EXTRA_CHEST
+  # 方块类型，建议 CHEST。双箱需要原版箱子才能合并库存
+  block-type: CHEST
+
+location:
+  # 水平搜索半径（格）。死亡点周围这么远内找可放置位置
+  safe-location-radius: 32
+  # 垂直搜索半径（格）
+  vertical-search-radius: 64
+  # 找不到安全位置时：
+  #   NORMAL_DROP      不创建箱子，物品原版掉落
+  #   VIRTUAL_STORAGE  写入恢复仓库，清空原版掉落；玩家上线后尝试塞回背包（仍会按 experience 处理经验）
+  failure-mode: VIRTUAL_STORAGE
+  # 单次死亡最多检查多少格。附近没有空位时避免长时间卡顿，找不到则按 failure-mode
+  max-block-checks: 12000
+  # 是否允许放在水源里（变成含水箱子）
+  allow-waterlogged: true
+  # true 时不贴着已有箱子放置，避免意外合成双箱
+  avoid-existing-chests: true
+
+integration:
+  residence:
+    # 是否对接 Residence。未安装插件时自动跳过
+    enabled: true
+    # true：玩家在领地里没有对应权限则不在此处放置
+    avoid-no-permission-residence: true
+    check-build-permission: true
+    check-place-permission: true
+    check-container-permission: true
+
+protection:
+  # 私人保护时长（秒）。到期后任何人可打开。0 = 生成后立即公开
+  # 43200 = 12 小时
+  private-time: 43200
+  # 公开后再过多久移除箱子（秒）。剩余物品按 cleanup.expire-mode 处理
+  # 0 = 公开后箱子一直留着，不自动掉落。259200 = 3 天
+  public-time: 259200
+  # 关服期间计时是否继续。改完请重启服务器，/dc reload 不会补时
+  #   REALTIME       按现实时间走。关服 1 天，保护/掉落倒计时也少 1 天
+  #   PAUSE_OFFLINE  关服期间暂停。开机后把停机时长加回到期时间
+  # 停机时间写在 plugins/DeathChest/uptime.yml，不要手动删
+  # 崩溃半路补时时，箱子会记下已补时长，下次开机只补差额，不会把到期时间加两次
+  timer-mode: REALTIME
+  # 主人是否可以敲碎自己的死亡箱（物品会进恢复仓库；恢复仓库关闭时改为掉在地上）
+  owner-can-break: true
+  # 公开后其他人是否可以敲碎（保护期内外人始终不能敲）
+  # 敲碎后剩余物品仍进入箱子主人的恢复仓库，而不是敲碎者的背包，避免公开期偷东西
+  public-can-break: true
+  # 保护期内是否免疫爆炸。公开后可以被炸
+  protect-from-explosion: true
+  # 是否阻止活塞推动死亡箱
+  protect-from-piston: true
+  # 保护期内是否阻止漏斗抽走物品。公开后漏斗可以工作
+  # 锁定中的死亡箱无论是否公开都会阻止漏斗。漏斗抽空后会按 remove-empty-chest 移除箱子
+  protect-from-hopper: true
+
+quick-retrieve:
+  # 潜行右键快速把箱子里的物品转移到玩家背包
+  enabled: true
+  # true：只有主人能快速取回（管理员可用 retrieve.bypass）
+  # false：任何人只要有 deathchest.retrieve 都可以在公开后快速取回
+  # 保护期内无论此项如何，都只有主人或 deathchest.bypass / retrieve.bypass 能取回
+  owner-only: true
+  # 是否允许持有 deathchest.retrieve.bypass 的管理员取回别人的箱子
+  allow-admin-bypass: true
+  equipment:
+    # 取回时是否自动穿装备 / 放副手
+    enabled: true
+    # EMPTY_SLOT_ONLY  对应槽位为空才穿上
+    # ALWAYS_REPLACE   可以顶掉已穿装备（旧装备会尝试放回背包，放不下则不替换）
+    mode: EMPTY_SLOT_ONLY
+    auto-equip-helmet: true
+    auto-equip-chestplate: true
+    auto-equip-leggings: true
+    auto-equip-boots: true
+    auto-equip-offhand: true
+  inventory:
+    # 先与背包里已有同类物品堆叠，再找空格
+    merge-existing-stacks-first: true
+
+hologram:
+  # 是否在箱子上方显示 TextDisplay 全息。失败不影响死亡箱本身
+  enabled: true
+  # 相对箱子的高度
+  height: 1.5
+  # 刷新间隔（tick）。20 = 每秒一次
+  update-interval: 20
+
+cleanup:
+  # 公开时间结束后：
+  #   DROP_ITEMS    箱子消失，剩余物品掉在地上
+  #   DELETE_ITEMS  箱子消失，剩余物品直接删除
+  expire-mode: DROP_ITEMS
+  # 箱子被取空后是否自动移除
+  remove-empty-chest: true
+  # 取空后延迟多少 tick 再移除，避免关箱瞬间误删。20 = 1 秒
+  remove-delay: 20
+
+death-records:
+  # 是否写入死亡记录。false 时不保存历史，回滚/预览将不可用
+  enabled: true
+  # true：每次保存都写入物品快照
+  # false：首次仍会写入快照，之后状态更新不再覆盖已有快照
+  save-item-snapshot: true
+  # 每个玩家最多保留多少条记录。0 = 不限制。超出时删除最旧且未被箱子/恢复仓库占用的记录
+  max-records-per-player: 30
+  # 仍有活动死亡箱的记录不参与清理
+  protect-active-chest-records: true
+  # 恢复仓库中仍有待领取物品的记录不参与清理
+  protect-pending-recovery-records: true
+  cleanup:
+    # 是否定时按 max-records-per-player 清理，并同时清理过期审计日志
+    enabled: true
+    # 清理间隔（分钟）。720 = 12 小时
+    interval-minutes: 720
+
+rollback:
+  # 是否允许 /deathchest restore
+  enabled: true
+  # 是否允许 --force。仍需要 deathchest.restore.force 权限
+  # --force 只会发还箱子里剩下的物品或恢复仓库里的物品；箱子还在时不会再发一整份快照
+  # 从未创建死亡箱（原版掉落）时，--force 也不会补发物品
+  allow-force: true
+  # 是否允许回滚物品
+  restore-items: true
+  # 是否允许回滚经验（恢复到死亡前的总经验）
+  restore-experience: true
+  # 玩家在线但背包满、或不在线时，把发不下的物品写入恢复仓库
+  use-recovery-storage: true
+
+recovery-storage:
+  # 找不到位置、敲碎箱子、回滚背包满时，把物品暂存于此
+  enabled: true
+  # 超过这个天数未领取则删除。默认 30 天。按现实时间计算，不受 protection.timer-mode 影响
+  expire-days: 30
+  # 玩家上线时若有待领取物品，尝试塞回背包并发送提示
+  notify-on-join: true
+
+audit:
+  # 是否写入审计数据库（创建、取回、回滚、报错等）
+  enabled: true
+  # 是否把玩家操作和死亡箱行为打印到控制台。false 时仍可写入数据库
+  log-to-console: true
+  # 审计日志保留天数。365 = 一年
+  retention-days: 365
+
+storage:
+  # SQLITE 本地文件 / MYSQL 远程库。连接 MySQL 失败不会改回 SQLite
+  # 切换类型必须重启服务器
+  type: SQLITE
+  # SQLite 文件名，位于 plugins/DeathChest/
+  file: deathchest.db
+  mysql:
+    host: 127.0.0.1
+    port: 3306
+    database: deathchest
+    username: root
+    password: ""
+    # 附加 JDBC 参数。一般不用改
+    parameters: "createDatabaseIfNotExist=true&sslMode=DISABLE&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci"
+    # 若填写完整 jdbc:mysql://... 则忽略上面的 host/port/database/parameters
+    jdbc-url: ""
+
+placeholder:
+  # 是否注册 PlaceholderAPI 扩展 deathchest。未安装 PAPI 时自动跳过
+  enabled: true
+
+time:
+  # 记录、/info、/history 里的时间格式
+  date-format: "yyyy-MM-dd HH:mm:ss"
+  # 时区，默认北京时间 Asia/Shanghai
+  timezone: Asia/Shanghai

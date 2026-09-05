@@ -1,0 +1,85 @@
+name: DeathChest
+version: ${project.version}
+main: com.npucraft.deathchest.DeathChestPlugin
+api-version: "1.21"
+description: Safe anti-dupe death chests with economy, holograms, records, and restore.
+author: NPUcraft
+folia-supported: false
+softdepend:
+  - Vault
+  - CoinsEngine
+  - ExcellentEconomy
+  - PlaceholderAPI
+  - Residence
+commands:
+  deathchest:
+    description: DeathChest player and admin commands
+    aliases: [dc]
+    usage: /deathchest help
+permissions:
+  deathchest.use:
+    description: Allow DeathChest to handle this player's deaths
+    default: true
+  deathchest.status:
+    description: View personal DeathChest status
+    default: true
+  deathchest.list:
+    description: List own active death chests
+    default: true
+  deathchest.info:
+    description: View death chest details and read-only drop snapshot
+    default: true
+  deathchest.unlock:
+    description: Immediately make own death chest public
+    default: true
+  deathchest.unlock.others:
+    description: Immediately make any death chest public
+    default: op
+  deathchest.retrieve:
+    description: Quick retrieve own death chests in the world
+    default: true
+  deathchest.retrieve.bypass:
+    description: Quick retrieve any death chest
+    default: op
+  deathchest.admin:
+    description: All DeathChest admin commands
+    default: op
+    children:
+      deathchest.reload: true
+      deathchest.bypass: true
+      deathchest.break.bypass: true
+      deathchest.list.others: true
+      deathchest.unlock.others: true
+      deathchest.history: true
+      deathchest.history.others: true
+      deathchest.record: true
+      deathchest.teleport: true
+      deathchest.restore: true
+      deathchest.restore.exp: true
+      deathchest.restore.force: true
+      deathchest.retrieve.bypass: true
+  deathchest.reload:
+    default: op
+  deathchest.bypass:
+    description: Bypass private chest protection
+    default: op
+  deathchest.break.bypass:
+    description: Bypass death chest break protection
+    default: op
+  deathchest.list.others:
+    default: op
+  deathchest.history:
+    default: op
+  deathchest.history.others:
+    default: op
+  deathchest.record:
+    description: View death record statistics
+    default: op
+  deathchest.teleport:
+    default: op
+  deathchest.restore:
+    default: op
+  deathchest.restore.exp:
+    default: op
+  deathchest.restore.force:
+    default: op

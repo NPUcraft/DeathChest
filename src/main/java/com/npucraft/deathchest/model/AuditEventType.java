@@ -1,0 +1,16 @@
+package com.npucraft.deathchest.model;
+
+public enum AuditEventType {
+    DEATH_PREPARED,
+    DEATH_COMMITTED,
+    CHEST_CREATED,
+    CHEST_UNLOCKED,
+    CHEST_REMOVED,
+    CHEST_EXPIRED,
+    QUICK_RETRIEVE,
+    ECONOMY_WITHDRAW,
+    ADMIN_UNLOCK,
+    ADMIN_RESTORE,
+    ADMIN_FORCE_RESTORE,
+    ERROR
+}
