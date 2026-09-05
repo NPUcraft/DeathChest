@@ -55,7 +55,7 @@ mvn clean package
 mvn -DskipTests clean package
 ```
 
-构建产物为 `target/DeathChest-1.0.2.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
+构建产物为 `target/DeathChest-1.0.3.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
 
 - `plugins/DeathChest/config.yml`
 - `plugins/DeathChest/message_zh.yml`
@@ -142,7 +142,7 @@ mvn -DskipTests clean package
 - `DROP_OVERFLOW`：可保存部分进入箱子，剩余部分保留为原版掉落。
 - `NORMAL_DROP_ALL`：全部放弃创建并使用原版掉落。
 
-位置搜索会检查世界高度、虚空、岩浆、方块可替换性、箱子连接、已有 DeathChest、双箱两侧空间及 Residence 权限。`location.max-block-checks` 限制单次死亡最多检查的候选方块数量，避免极端位置搜索长期占用主线程。
+位置搜索按露天地面、水源中的含水箱子、洞穴安全位置依次选择，并检查世界高度、虚空、岩浆、方块可替换性、箱子连接、已有 DeathChest、双箱两侧空间及 Residence 权限。`location.max-block-checks` 限制单次死亡最多检查的候选方块数量，避免极端位置搜索长期占用主线程。
 
 Residence 检查可分别启用 `build`、`place`、`container`。双箱两个方块都会独立检查，不能跨入玩家无权限的领地。
 

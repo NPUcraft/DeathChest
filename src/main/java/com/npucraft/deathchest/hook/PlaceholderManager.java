@@ -148,12 +148,18 @@ public final class PlaceholderManager {
     }
 
     private String tabFooter(Player player, DeathChestData last) {
-        StringBuilder footer = new StringBuilder("<newline><gold>DeathChest：</gold>");
-        if (plugin.settings().enabled) {
-            footer.append("<green>开</green><white> ｜ </white><gold>预消耗：</gold><yellow>")
-                    .append(Texts.formatNumber(plugin.estimatedDeathPrice(player))).append("🍉</yellow>");
+        boolean globalEnabled = plugin.settings().enabled;
+        boolean enabled = globalEnabled
+                && plugin.playerSettings().isEnabled(player.getUniqueId());
+        StringBuilder footer = new StringBuilder("<newline><gold>死亡箱：</gold>");
+        if (enabled) {
+            footer.append("<green>开</green>");
         } else {
             footer.append("<red>关</red>");
+        }
+        if (globalEnabled) {
+            footer.append("<white> ｜ </white><gold>预计消耗：</gold><yellow>")
+                    .append(Texts.formatNumber(plugin.estimatedDeathPrice(player))).append("🍉</yellow>");
         }
         if (last != null) {
             long now = System.currentTimeMillis();
@@ -164,7 +170,7 @@ public final class PlaceholderManager {
                     ? "掉落剩余：" : "清理剩余：";
             footer.append("<newline><gold>死亡点：</gold><aqua>")
                     .append(displayWorld(last.getWorld())).append("(")
-                    .append(last.getX()).append(", ").append(last.getY()).append(", ").append(last.getZ())
+                    .append(last.getX()).append(",").append(last.getY()).append(",").append(last.getZ())
                     .append(")</aqua><white> ｜ </white><gold>").append(label)
                     .append("</gold><yellow>")
                     .append(target <= 0L ? "永久" : TimeFormats.durationHms(TimeFormats.remaining(target, now)))

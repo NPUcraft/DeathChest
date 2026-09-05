@@ -6,8 +6,8 @@
 
 新增 `%deathchest_tab_footer%` 返回 MiniMessage 文本，自带开头换行：
 
-- 始终显示后端服 `general.enabled` 的全局开关状态。
-- 全局开启时显示当前玩家的死亡预估费用，沿用 `%deathchest_estimated_price%` 的计算方式。个人关闭时预估费用可能为 0；全局状态不会因此变为关闭。
+- 显示后端服 `general.enabled` 与玩家 `/dc on|off` 合并后的有效开关状态。
+- 后端服全局开关开启时显示当前玩家的死亡预估费用，沿用 `%deathchest_estimated_price%` 的计算方式；玩家 `/dc off` 后显示 `0🍉`。
 - 存在活动死亡箱时，按创建时间倒序选择最新的一个箱子，显示实际箱子坐标。部分领取后箱子仍存在时继续显示。
 - 保护中显示到解锁的“保护剩余”；公开后显示到到期的“掉落剩余”。固定使用累计小时、分钟、秒，例如 `72时0分0秒`。
 - 若配置到期删除物品，则显示“清理剩余”；永不到期显示“永久”。到期但清理任务尚未移除箱子时显示 `0时0分0秒`。
@@ -19,7 +19,7 @@
 
 ## 安装与刷新
 
-1. 将重新构建的 `target/DeathChest-1.0.2.jar` 安装到三个生存后端服并重启后端。
+1. 将重新构建的 `target/DeathChest-1.0.3.jar` 安装到三个生存后端服并重启后端。
 2. 后端启用 PlaceholderAPI 和 DeathChest 的 PlaceholderAPI 集成。Velocity 及相关后端安装 PAPIProxyBridge，并开启 Velocitab 的 PAPI hook。
 3. 修改 Velocitab `config.yml` 中的 `papi_cache_time: 1000`；分组原有的 `placeholder_update_rate: 1000` 和 `header_footer_update_rate: 500` 可保留。默认 PAPI 缓存为 30 秒，仅修改 footer 刷新率无法实现秒级倒计时。
 4. 替换分组的 footer 后执行 `/velocitab reload`。
@@ -29,8 +29,8 @@
 
 ```text
 在线玩家：8/20人 | 余额：1200
-DeathChest：开 ｜ 预消耗：660🍉
-死亡点：Overworld(123, 64, -456) ｜ 保护剩余：11时59分58秒
+死亡箱：开 ｜ 预计消耗：660🍉
+死亡点：Overworld(123,64,-456) ｜ 保护剩余：11时59分58秒
 ```
 
 参考：[条件占位符](https://william278.net/docs/velocitab/conditional-placeholders)、[PAPI 桥接与缓存](https://william278.net/docs/velocitab/placeholders)。

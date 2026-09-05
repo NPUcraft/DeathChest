@@ -22,6 +22,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 public final class DeathChestLocationFinder {
+    private enum PlacementKind {
+        SURFACE,
+        WATER,
+        CAVE
+    }
+
     private static final BlockFace[] HORIZONTAL = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
     private static final Set<Material> DANGEROUS = EnumSet.of(
             Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.SOUL_CAMPFIRE, Material.CAMPFIRE, Material.MAGMA_BLOCK
@@ -56,14 +62,36 @@ public final class DeathChestLocationFinder {
         int[] checks = {0};
         int maxChecks = plugin.settings().maxBlockChecks;
 
-        for (int r = 0; r <= radius; r++) {
+        long diameter = radius * 2L + 1L;
+        long columns = diameter * diameter;
+        int surfaceBudget = (int) Math.min(columns, Math.max(1L, maxChecks * 2L / 5L));
+        int surfaceLimit = Math.min(maxChecks, surfaceBudget);
+        ChestPlacement surface = search(player, world, originX, originY, originZ, radius, minY, maxY,
+                vertical, type, occupied, checks, surfaceLimit, PlacementKind.SURFACE);
+        if (surface != null) {
+            return surface;
+        }
+
+        int remaining = maxChecks - checks[0];
+        int waterLimit = checks[0] + remaining / 2;
+        ChestPlacement water = search(player, world, originX, originY, originZ, radius, minY, maxY,
+                vertical, type, occupied, checks, waterLimit, PlacementKind.WATER);
+        if (water != null) {
+            return water;
+        }
+
+        return search(player, world, originX, originY, originZ, radius, minY, maxY,
+                vertical, type, occupied, checks, maxChecks, PlacementKind.CAVE);
+    }
+
+    private ChestPlacement search(Player player, World world, int originX, int originY, int originZ, int radius,
+                                  int minY, int maxY, int vertical, ChestType type,
+                                  Predicate<LocationKey> occupied, int[] checks, int limit, PlacementKind kind) {
+        for (int r = 0; r <= radius && checks[0] < limit; r++) {
             ChestPlacement found = searchRing(player, world, originX, originY, originZ, r,
-                    minY, maxY, vertical, type, occupied, checks, maxChecks);
+                    minY, maxY, vertical, type, occupied, checks, limit, kind);
             if (found != null) {
                 return found;
-            }
-            if (checks[0] >= maxChecks) {
-                return null;
             }
         }
         return null;
@@ -71,19 +99,20 @@ public final class DeathChestLocationFinder {
 
     private ChestPlacement searchRing(Player player, World world, int originX, int originY, int originZ, int r,
                                       int minY, int maxY, int vertical, ChestType type,
-                                      Predicate<LocationKey> occupied, int[] checks, int maxChecks) {
+                                      Predicate<LocationKey> occupied, int[] checks, int maxChecks,
+                                      PlacementKind kind) {
         if (r == 0) {
             return tryColumn(player, world, originX, originY, originZ, minY, maxY, vertical,
-                    type, occupied, checks, maxChecks);
+                    type, occupied, checks, maxChecks, kind);
         }
         for (int x = originX - r; x <= originX + r; x++) {
             ChestPlacement north = tryColumn(player, world, x, originY, originZ - r, minY, maxY, vertical,
-                    type, occupied, checks, maxChecks);
+                    type, occupied, checks, maxChecks, kind);
             if (north != null) {
                 return north;
             }
             ChestPlacement south = tryColumn(player, world, x, originY, originZ + r, minY, maxY, vertical,
-                    type, occupied, checks, maxChecks);
+                    type, occupied, checks, maxChecks, kind);
             if (south != null) {
                 return south;
             }
@@ -93,12 +122,12 @@ public final class DeathChestLocationFinder {
         }
         for (int z = originZ - r + 1; z <= originZ + r - 1; z++) {
             ChestPlacement west = tryColumn(player, world, originX - r, originY, z, minY, maxY, vertical,
-                    type, occupied, checks, maxChecks);
+                    type, occupied, checks, maxChecks, kind);
             if (west != null) {
                 return west;
             }
             ChestPlacement east = tryColumn(player, world, originX + r, originY, z, minY, maxY, vertical,
-                    type, occupied, checks, maxChecks);
+                    type, occupied, checks, maxChecks, kind);
             if (east != null) {
                 return east;
             }
@@ -111,40 +140,35 @@ public final class DeathChestLocationFinder {
 
     private ChestPlacement tryColumn(Player player, World world, int x, int originY, int z,
                                      int minY, int maxY, int vertical, ChestType type,
-                                     Predicate<LocationKey> occupied, int[] checks, int maxChecks) {
-        ChestPlacement exact = tryBlock(player, world.getBlockAt(x, originY, z), type, occupied, checks, maxChecks);
+                                     Predicate<LocationKey> occupied, int[] checks, int maxChecks,
+                                     PlacementKind kind) {
+        if (kind == PlacementKind.SURFACE) {
+            int surfaceY = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1;
+            if (surfaceY < minY || surfaceY > maxY || Math.abs(surfaceY - originY) > vertical) {
+                countCheck(checks, maxChecks);
+                return null;
+            }
+            return tryBlock(player, world.getBlockAt(x, surfaceY, z), type, occupied, checks, maxChecks, kind);
+        }
+
+        ChestPlacement exact = tryBlock(player, world.getBlockAt(x, originY, z), type, occupied,
+                checks, maxChecks, kind);
         if (exact != null || checks[0] >= maxChecks) {
             return exact;
         }
-
-        int surfaceY = Integer.MIN_VALUE;
-        if (world.getEnvironment() != World.Environment.NETHER) {
-            surfaceY = Math.min(maxY, world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1);
-            if (surfaceY != originY && Math.abs(surfaceY - originY) <= vertical) {
-                ChestPlacement surface = tryBlock(player, world.getBlockAt(x, surfaceY, z),
-                        type, occupied, checks, maxChecks);
-                if (surface != null || checks[0] >= maxChecks) {
-                    return surface;
-                }
-            }
-            if (surfaceY <= minY + 1 && world.getBlockAt(x, minY, z).getType().isAir()) {
-                return null;
-            }
-        }
-
         for (int distance = 1; distance <= vertical; distance++) {
             int belowY = originY - distance;
-            if (belowY >= minY && belowY != surfaceY) {
+            if (belowY >= minY) {
                 ChestPlacement below = tryBlock(player, world.getBlockAt(x, belowY, z),
-                        type, occupied, checks, maxChecks);
+                        type, occupied, checks, maxChecks, kind);
                 if (below != null || checks[0] >= maxChecks) {
                     return below;
                 }
             }
             int aboveY = originY + distance;
-            if (aboveY <= maxY && aboveY != surfaceY) {
+            if (aboveY <= maxY) {
                 ChestPlacement above = tryBlock(player, world.getBlockAt(x, aboveY, z),
-                        type, occupied, checks, maxChecks);
+                        type, occupied, checks, maxChecks, kind);
                 if (above != null || checks[0] >= maxChecks) {
                     return above;
                 }
@@ -154,28 +178,33 @@ public final class DeathChestLocationFinder {
     }
 
     private ChestPlacement tryBlock(Player player, Block block, ChestType type, Predicate<LocationKey> occupied,
-                                    int[] checks, int maxChecks) {
+                                    int[] checks, int maxChecks, PlacementKind kind) {
         if (checks[0] >= maxChecks) {
             return null;
         }
         checks[0]++;
+        if (!matchesKind(block, kind)) {
+            return null;
+        }
         if (type == ChestType.SINGLE) {
             if (isValidSingle(player, block, occupied)) {
                 return new ChestPlacement(ChestType.SINGLE, block, null, preferredFacing(block));
             }
             return null;
         }
-        return findDouble(player, block, occupied);
+        return findDouble(player, block, occupied, kind);
     }
 
-    private ChestPlacement findDouble(Player player, Block primary, Predicate<LocationKey> occupied) {
+    private ChestPlacement findDouble(Player player, Block primary, Predicate<LocationKey> occupied,
+                                      PlacementKind kind) {
         if (!isReplaceable(primary) || !isSafe(primary) || occupied.test(LocationKey.of(primary.getLocation()))
                 || !plugin.protection().canCreateDeathChest(player, primary)) {
             return null;
         }
         for (BlockFace face : HORIZONTAL) {
             Block secondary = primary.getRelative(face);
-            if (!isReplaceable(secondary) || !isSafe(secondary) || occupied.test(LocationKey.of(secondary.getLocation()))) {
+            if (!matchesKind(secondary, kind) || !isReplaceable(secondary) || !isSafe(secondary)
+                    || occupied.test(LocationKey.of(secondary.getLocation()))) {
                 continue;
             }
             if (!plugin.protection().canCreateDeathChest(player, secondary)) {
@@ -187,6 +216,25 @@ public final class DeathChestLocationFinder {
             return new ChestPlacement(ChestType.DOUBLE, primary, secondary, facingForPair(face));
         }
         return null;
+    }
+
+    private boolean matchesKind(Block block, PlacementKind kind) {
+        return switch (kind) {
+            case SURFACE -> block.getType() != Material.WATER && isExposedSurface(block);
+            case WATER -> block.getType() == Material.WATER;
+            case CAVE -> block.getType() != Material.WATER && !isExposedSurface(block);
+        };
+    }
+
+    private boolean isExposedSurface(Block block) {
+        return block.getY() == block.getWorld().getHighestBlockYAt(
+                block.getX(), block.getZ(), HeightMap.MOTION_BLOCKING_NO_LEAVES) + 1;
+    }
+
+    private void countCheck(int[] checks, int maxChecks) {
+        if (checks[0] < maxChecks) {
+            checks[0]++;
+        }
     }
 
     private boolean isValidSingle(Player player, Block block, Predicate<LocationKey> occupied) {
