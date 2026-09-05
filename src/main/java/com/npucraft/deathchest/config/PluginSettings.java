@@ -235,7 +235,7 @@ public final class PluginSettings {
         this.mysqlJdbcUrl = config.getString("storage.mysql.jdbc-url", "");
         this.placeholderEnabled = config.getBoolean("placeholder.enabled", true);
 
-        this.dateFormat = config.getString("time.date-format", "yyyy-MM-dd HH:mm:ss");
+        this.dateFormat = config.getString("time.date-format", "yyyy年MM月dd日 HH时mm分ss秒");
         this.timezone = config.getString("time.timezone", "Asia/Shanghai");
     }
 

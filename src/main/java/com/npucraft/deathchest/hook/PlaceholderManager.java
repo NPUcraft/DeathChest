@@ -139,7 +139,16 @@ public final class PlaceholderManager {
         if (millis <= 0L) {
             return "-";
         }
-        return TimeFormats.duration(millis, plugin.messages().durationMinutesSeconds(), plugin.messages().durationSeconds());
+        return TimeFormats.duration(millis,
+                plugin.messages().durationDays(),
+                plugin.messages().durationHours(),
+                plugin.messages().durationMinutesSeconds(),
+                plugin.messages().durationSeconds());
+    }
+
+    public String absolute(long target) {
+        return TimeFormats.formatInstant(target,
+                TimeFormats.formatter(plugin.settings().dateFormat, plugin.settings().timezone));
     }
 
     public String protectionRemaining(DeathChestData chest) {

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.format.DateTimeFormatter;
 
 public final class DeathChestTransaction {
     private final DeathChestPlugin plugin;
@@ -284,6 +285,7 @@ public final class DeathChestTransaction {
         plugin.audit().log(AuditEventType.DEATH_COMMITTED, player.getUniqueId(), player.getName(), player.getUniqueId(),
                 player.getName(), record.getDeathChestId(), record.getRecordId(), "chests=" + created.size(), false);
 
+        DateTimeFormatter timeFormatter = TimeFormats.formatter(settings.dateFormat, settings.timezone);
         Map<String, String> placeholders = plugin.messages().map(
                 "world", created.getFirst().getWorld(),
                 "x", String.valueOf(created.getFirst().getX()),
@@ -291,8 +293,14 @@ public final class DeathChestTransaction {
                 "z", String.valueOf(created.getFirst().getZ()),
                 "price", Texts.formatNumber(record.getChargedPrice()),
                 "currency", plugin.economy().provider().getCurrencyName(),
-                "protection", TimeFormats.duration(settings.privateTimeSeconds * 1000L, plugin.messages().durationMinutesSeconds(), plugin.messages().durationSeconds()),
-                "public", TimeFormats.duration(settings.publicTimeSeconds * 1000L, plugin.messages().durationMinutesSeconds(), plugin.messages().durationSeconds()),
+                "protection", TimeFormats.duration(settings.privateTimeSeconds * 1000L,
+                        plugin.messages().durationDays(), plugin.messages().durationHours(),
+                        plugin.messages().durationMinutesSeconds(), plugin.messages().durationSeconds()),
+                "public", TimeFormats.duration(settings.publicTimeSeconds * 1000L,
+                        plugin.messages().durationDays(), plugin.messages().durationHours(),
+                        plugin.messages().durationMinutesSeconds(), plugin.messages().durationSeconds()),
+                "unlock_at", TimeFormats.formatInstant(unlockAt, timeFormatter),
+                "expire_at", TimeFormats.formatInstant(expireAt, timeFormatter),
                 "count", String.valueOf(Math.max(0, created.size() - 1))
         );
         plugin.messages().send(player, "death-created", placeholders);

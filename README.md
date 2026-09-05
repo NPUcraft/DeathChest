@@ -303,7 +303,7 @@ Expansion identifier 为 `deathchest`，仅为在线玩家返回数据：
 - `%deathchest_state%`、`%deathchest_item_count%`、`%deathchest_slot_count%`
 - `%deathchest_player_level%`、`%player_name%`
 
-插件先替换内部变量，再交给 PlaceholderAPI 解析其他插件变量。目标时间为 0、已经到期或当前不受保护时，剩余时间显示 `-`。
+插件先替换内部变量，再交给 PlaceholderAPI 解析其他插件变量。倒计时会按实际长度显示“天、小时、分钟、秒”，例如 `2天3小时4分钟5秒`；全息和信息消息同时标注绝对的公开或掉落时间，默认格式为 `yyyy年MM月dd日 HH时mm分ss秒`，时区为 `Asia/Shanghai`。目标时间为 0、已经到期或当前不受保护时，剩余时间显示 `-`。
 
 ## 存储
 

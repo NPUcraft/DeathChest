@@ -74,7 +74,9 @@ public final class ProtectionListener implements Listener {
             plugin.audit().player(player.getName(), "打开被拒绝（保护中）",
                     "chest=" + chest.getId() + " 主人=" + chest.getOwnerName() + " " + AuditLogger.location(chest));
             plugin.messages().send(player, "protected-deny", plugin.messages().map("owner", chest.getOwnerName()));
-            plugin.messages().send(player, "protected-remaining", plugin.messages().map("time", plugin.placeholders().remaining(chest.getUnlockAt())));
+            plugin.messages().send(player, "protected-remaining", plugin.messages().map(
+                    "time", plugin.placeholders().remaining(chest.getUnlockAt()),
+                    "unlock", plugin.placeholders().absolute(chest.getUnlockAt())));
             return;
         }
         plugin.audit().player(player.getName(), "打开死亡箱",

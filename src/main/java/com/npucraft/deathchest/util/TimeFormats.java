@@ -12,9 +12,10 @@ public final class TimeFormats {
     public static DateTimeFormatter formatter(String pattern, String timezone) {
         DateTimeFormatter formatter;
         try {
-            formatter = DateTimeFormatter.ofPattern(pattern == null || pattern.isBlank() ? "yyyy-MM-dd HH:mm:ss" : pattern);
+            formatter = DateTimeFormatter.ofPattern(pattern == null || pattern.isBlank()
+                    ? "yyyy年MM月dd日 HH时mm分ss秒" : pattern);
         } catch (IllegalArgumentException exception) {
-            formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH时mm分ss秒");
         }
         ZoneId zone = ZoneId.of("Asia/Shanghai");
         if (timezone != null && !timezone.isBlank()) {
@@ -33,17 +34,30 @@ public final class TimeFormats {
         return formatter.format(Instant.ofEpochMilli(epochMillis));
     }
 
-    public static String duration(long millis, String minutesSecondsFormat, String secondsFormat) {
-        long totalSeconds = Math.max(0L, millis / 1000L);
-        long minutes = totalSeconds / 60L;
+    public static String duration(long millis, String daysFormat, String hoursFormat,
+                                  String minutesFormat, String secondsFormat) {
+        long totalSeconds = millis <= 0L ? 0L : 1L + (millis - 1L) / 1000L;
+        long days = totalSeconds / 86_400L;
+        long hours = totalSeconds % 86_400L / 3_600L;
+        long minutes = totalSeconds % 3_600L / 60L;
         long seconds = totalSeconds % 60L;
-        if (minutes <= 0L) {
-            return Texts.apply(secondsFormat == null ? "{seconds}秒" : secondsFormat, Map.of("seconds", String.valueOf(seconds)));
-        }
-        return Texts.apply(minutesSecondsFormat == null ? "{minutes}分{seconds}秒" : minutesSecondsFormat, Map.of(
+        Map<String, String> values = Map.of(
+                "days", String.valueOf(days),
+                "hours", String.valueOf(hours),
                 "minutes", String.valueOf(minutes),
                 "seconds", String.valueOf(seconds)
-        ));
+        );
+        if (days > 0L) {
+            return Texts.apply(daysFormat == null
+                    ? "{days}天{hours}小时{minutes}分钟{seconds}秒" : daysFormat, values);
+        }
+        if (hours > 0L) {
+            return Texts.apply(hoursFormat == null ? "{hours}小时{minutes}分钟{seconds}秒" : hoursFormat, values);
+        }
+        if (minutes > 0L) {
+            return Texts.apply(minutesFormat == null ? "{minutes}分钟{seconds}秒" : minutesFormat, values);
+        }
+        return Texts.apply(secondsFormat == null ? "{seconds}秒" : secondsFormat, values);
     }
 
     public static long remaining(long target, long now) {

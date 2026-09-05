@@ -66,8 +66,16 @@ public final class MessageManager {
         return list == null ? List.of() : list;
     }
 
+    public String durationDays() {
+        return raw("time.duration-days", "{days}天{hours}小时{minutes}分钟{seconds}秒");
+    }
+
+    public String durationHours() {
+        return raw("time.duration-hours", "{hours}小时{minutes}分钟{seconds}秒");
+    }
+
     public String durationMinutesSeconds() {
-        return raw("time.duration-minutes-seconds", "{minutes}分{seconds}秒");
+        return raw("time.duration-minutes-seconds", "{minutes}分钟{seconds}秒");
     }
 
     public String durationSeconds() {

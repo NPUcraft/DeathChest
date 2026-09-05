@@ -35,8 +35,8 @@ enabled-no: "关闭"
 death-created: "<green>死亡物品已保存到死亡箱。"
 death-created-location: "<gray>位置：<white>%world% %x% %y% %z%"
 death-created-price: "<gray>费用：<white>%price% %currency%"
-death-created-protection: "<gray>保护时间：<white>%protection% <gray>，之后进入公开模式。"
-death-created-drop-timer: "<gray>公开 <white>%public% <gray>后仍未取走的物品会变成掉落物。"
+death-created-protection: "<gray>保护时间：<white>%protection% <gray>，公开时间：<white>%unlock_at%"
+death-created-drop-timer: "<gray>公开时长：<white>%public% <gray>，预计掉落时间：<white>%expire_at%"
 death-chest-expired-drops: "<yellow>死亡箱 %id% 已过期，剩余物品掉落在 <white>%world% %x% %y% %z%"
 death-created-unpaid: "<yellow>余额不足，死亡箱不受保护，任何人都可以打开。"
 death-created-extra: "<gray>因物品过多，额外生成了 <white>%count% <gray>个死亡箱。"
@@ -52,7 +52,7 @@ death-economy-unavailable: "<red>经济插件不可用，无法创建死亡箱�
 death-economy-balance-failed: "<red>查询余额失败，无法创建死亡箱，物品已按原版掉落。"
 
 protected-deny: "<red>该死亡箱属于 <white>%owner%<red>。"
-protected-remaining: "<gray>剩余保护时间：<white>%time%"
+protected-remaining: "<gray>剩余保护时间：<white>%time% <gray>（公开时间：<white>%unlock%<gray>）"
 retrieve-not-owner: "<red>只有死亡箱主人可以使用快速取回。"
 retrieve-success-all: "<green>已取回死亡箱中的全部物品。"
 retrieve-success-partial: "<yellow>已取回 <white>%taken% <yellow>个物品栈。还有 <white>%left% <yellow>个物品栈因背包空间不足保留在死亡箱。"
@@ -122,16 +122,21 @@ hologram:
   protected:
     - "<red>☠ <white>%deathchest_owner% <red>的死亡箱"
     - "<yellow>保护剩余：<white>%deathchest_protection_remaining%"
+    - "<gray>公开时间：<white>%deathchest_unlock_time%"
     - "<gray>%deathchest_x%, %deathchest_y%, %deathchest_z%"
   public:
     - "<red>☠ <white>%deathchest_owner% <red>的死亡箱"
     - "<green>已公开"
     - "<yellow>掉落剩余：<white>%deathchest_expire_remaining%"
+    - "<gray>掉落时间：<white>%deathchest_expire_time%"
   unpaid:
     - "<red>☠ <white>%deathchest_owner% <red>的死亡箱"
     - "<red>余额不足"
     - "<yellow>掉落剩余：<white>%deathchest_expire_remaining%"
+    - "<gray>掉落时间：<white>%deathchest_expire_time%"
 
 time:
-  duration-minutes-seconds: "{minutes}分{seconds}秒"
+  duration-days: "{days}天{hours}小时{minutes}分钟{seconds}秒"
+  duration-hours: "{hours}小时{minutes}分钟{seconds}秒"
+  duration-minutes-seconds: "{minutes}分钟{seconds}秒"
   duration-seconds: "{seconds}秒"

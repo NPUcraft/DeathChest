@@ -259,6 +259,6 @@ placeholder:
 
 time:
   # 记录、/info、/history 里的时间格式
-  date-format: "yyyy-MM-dd HH:mm:ss"
+  date-format: "yyyy年MM月dd日 HH时mm分ss秒"
   # 时区，默认北京时间 Asia/Shanghai
   timezone: Asia/Shanghai
