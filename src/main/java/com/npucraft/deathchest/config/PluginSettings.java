@@ -21,6 +21,7 @@ import java.util.Locale;
 public final class PluginSettings {
     public final boolean enabled;
     public final boolean debug;
+    public final boolean huskSyncPreventSyncDeath;
 
     public final boolean defaultEnabled;
     public final boolean allowToggle;
@@ -131,6 +132,7 @@ public final class PluginSettings {
         FileConfiguration config = plugin.getConfig();
         this.enabled = config.getBoolean("general.enabled", true);
         this.debug = config.getBoolean("general.debug", false);
+        this.huskSyncPreventSyncDeath = config.getBoolean("integrations.husksync.prevent-sync-death", true);
         this.inventoryTotem = config.getBoolean("totem.inventory-trigger", true);
 
         this.defaultEnabled = config.getBoolean("player-settings.default-enabled", true);

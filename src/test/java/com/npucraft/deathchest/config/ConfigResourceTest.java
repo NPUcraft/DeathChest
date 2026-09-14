@@ -25,6 +25,7 @@ class ConfigResourceTest {
             assertEquals("yyyy-MM-dd HH:mm:ss", yaml.getString("time.date-format"));
             assertEquals(true, yaml.getBoolean("player-settings.default-enabled"));
             assertEquals(true, yaml.getBoolean("player-settings.allow-toggle"));
+            assertEquals(true, yaml.getBoolean("integrations.husksync.prevent-sync-death"));
         }
     }
 }

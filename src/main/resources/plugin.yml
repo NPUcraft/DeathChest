@@ -6,6 +6,7 @@ description: Safe anti-dupe death chests with economy, holograms, records, and r
 author: NPUcraft
 folia-supported: false
 softdepend:
+  - HuskSync
   - Vault
   - CoinsEngine
   - ExcellentEconomy

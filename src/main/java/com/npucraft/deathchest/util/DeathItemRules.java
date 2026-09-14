@@ -14,6 +14,13 @@ public final class DeathItemRules {
     private DeathItemRules() {
     }
 
+    /** A backup only: retained items must never be put into a chest or recovery queue automatically. */
+    public static List<ItemStack> snapshotForSkippedDeath(PlayerDeathEvent event) {
+        return event.getKeepInventory()
+                ? ItemStacks.fromArray(event.getEntity().getInventory().getContents())
+                : ItemStacks.deepCopy(event.getDrops());
+    }
+
     public static void apply(PlayerDeathEvent event) {
         event.getDrops().removeIf(DeathItemRules::hasVanishingCurse);
         if (!event.getKeepInventory()) {

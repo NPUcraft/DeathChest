@@ -10,6 +10,7 @@ import com.npucraft.deathchest.config.ConfigManager;
 import com.npucraft.deathchest.config.PluginSettings;
 import com.npucraft.deathchest.manager.DeathChestTransaction;
 import com.npucraft.deathchest.hook.EconomyManager;
+import com.npucraft.deathchest.hook.HuskSyncIntegration;
 import com.npucraft.deathchest.manager.HologramManager;
 import com.npucraft.deathchest.listener.DeathListener;
 import com.npucraft.deathchest.listener.PlayerListener;
@@ -105,6 +106,7 @@ public final class DeathChestPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(new ProtectionListener(this), this);
         Bukkit.getPluginManager().registerEvents(new WorldListener(this), this);
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        new HuskSyncIntegration(this).register();
 
         PluginCommand pluginCommand = getCommand("deathchest");
         if (pluginCommand != null) {

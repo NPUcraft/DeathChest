@@ -51,14 +51,14 @@ public final class DeathChestTransaction {
 
         boolean playerEnabled = plugin.playerSettings().isEnabled(player.getUniqueId());
         if (!playerEnabled) {
-            DeathRecord disabledRecord = plugin.records().createPrepared(player, event, ItemStacks.deepCopy(event.getDrops()));
+            DeathRecord disabledRecord = plugin.records().createPrepared(player, event, DeathItemRules.snapshotForSkippedDeath(event));
             disabledRecord.setDeathChestEnabled(false);
             failSafe(disabledRecord, RecordStatus.NORMAL_DROP, "PLAYER_DISABLED");
             plugin.messages().send(player, "death-disabled");
             return;
         }
         if (event.getKeepInventory()) {
-            failSafe(plugin.records().createPrepared(player, event, ItemStacks.deepCopy(event.getDrops())),
+            failSafe(plugin.records().createPrepared(player, event, DeathItemRules.snapshotForSkippedDeath(event)),
                     RecordStatus.NORMAL_DROP, "KEEP_INVENTORY");
             plugin.messages().send(player, "death-keep-inventory");
             return;
@@ -338,7 +338,8 @@ public final class DeathChestTransaction {
         plugin.audit().chest("未创建", "玩家=" + record.getPlayerName()
                 + " record=" + record.getRecordId()
                 + " 状态=" + status.name()
-                + " 原因=" + reason);
+                + " 原因=" + reason
+                + " 快照物品栈=" + record.getItems().size());
     }
 
     private record PreparedChest(ChestType type, ChestPlacement placement) {

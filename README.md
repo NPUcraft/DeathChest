@@ -42,6 +42,10 @@
 
 如果配置启用了经济收费，但指定的经济插件、Provider 或货币不可用，DeathChest 不会创建免费保护箱，本次物品按原版掉落。
 
+## HuskSync 跨服死亡防护
+
+1.0.4 默认在 HuskSync 应用快照前将零血量调整为半颗心，避免同步期间再次死亡；正数血量正常同步。保留背包的死亡也会保存背包、装备和副手快照，供管理员核实后恢复，不自动补发。两服安装方式、行为变化和实测步骤见 [跨服死亡防护说明](docs/husksync-death-safety.md)。
+
 ## 构建与安装
 
 ```bash
@@ -55,7 +59,7 @@ mvn clean package
 mvn -DskipTests clean package
 ```
 
-构建产物为 `target/DeathChest-1.0.3.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
+构建产物为 `target/DeathChest-1.0.4.jar`，其中已经包含 SQLite 和 MySQL JDBC 驱动。将 JAR 放入服务器的 `plugins/` 目录并启动，默认生成：
 
 - `plugins/DeathChest/config.yml`
 - `plugins/DeathChest/message_zh.yml`

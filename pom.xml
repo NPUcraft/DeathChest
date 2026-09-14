@@ -6,7 +6,7 @@
 
     <groupId>com.npucraft</groupId>
     <artifactId>DeathChest</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
     <name>DeathChest</name>
     <description>Paper death chest plugin with anti-dupe transactions, economy, holograms, and admin restore.</description>
@@ -33,6 +33,12 @@
     </repositories>
 
     <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.16.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>

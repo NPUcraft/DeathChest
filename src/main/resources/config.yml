@@ -13,6 +13,13 @@ general:
   # true 时向控制台输出调试日志
   debug: false
 
+integrations:
+  husksync:
+    # 在 HuskSync 应用快照前将非正数/无效血量调整为 1（半颗心），避免同步过程再次死亡丢物品。
+    # 正常正数血量继续同步；已死亡玩家切服后将以半颗心进入目标服。
+    # 独立于 general.enabled 和玩家死亡箱开关；未安装 HuskSync 时不生效。
+    prevent-sync-death: true
+
 totem:
   # true：致命伤害时，若主手/副手没有图腾，则把背包里的图腾换到副手，从而触发原版图腾复活
   # 与 general.enabled 无关
@@ -187,6 +194,7 @@ cleanup:
   remove-delay: 20
 
 death-records:
+  # 保留背包的死亡也保存当前背包、装备和副手快照；仅作管理员恢复依据，不自动发放。
   # 是否写入死亡记录。false 时不保存历史，回滚/预览将不可用
   enabled: true
   # true：每次保存都写入物品快照
